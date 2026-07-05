@@ -9,8 +9,6 @@ type ControlPanelProps = {
   onPresetChange: (preset: Preset) => void;
   onSavePreset: () => void;
   onResetScore: () => void;
-  onExport: () => void;
-  onImport: (file: File | null) => void;
 };
 
 export function ControlPanel({
@@ -21,9 +19,7 @@ export function ControlPanel({
   onSettingsChange,
   onPresetChange,
   onSavePreset,
-  onResetScore,
-  onExport,
-  onImport
+  onResetScore
 }: ControlPanelProps) {
   const applyCustom = (patch: Partial<Settings>) => onSettingsChange(patch);
 
@@ -38,78 +34,50 @@ export function ControlPanel({
         />
       </label>
 
-      <div className="control-columns">
-        <div className="control-column">
-          <div className="slider-stack">
-            <label title="Cue and answer clip length in seconds">
-              <span>Cue length <strong>{settings.T.toFixed(2)}s</strong></span>
-              <input
-                type="range"
-                min="0.25"
-                max="3"
-                step="0.05"
-                value={settings.T}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ T: Number(event.currentTarget.value) })}
-              />
-            </label>
+      <div className="quick-controls">
+        <label title="Prompt and answer clip length in seconds">
+          <span>Prompt <strong>{settings.T.toFixed(2)}s</strong></span>
+          <input
+            type="range"
+            min="0.25"
+            max="3"
+            step="0.05"
+            value={settings.T}
+            disabled={disabled}
+            onChange={(event) => applyCustom({ T: Number(event.currentTarget.value) })}
+          />
+        </label>
 
-            <label title="Number of gallery clips">
-              <span>Choices <strong>{settings.N}</strong></span>
-              <input
-                type="range"
-                min="2"
-                max="8"
-                step="1"
-                value={settings.N}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ N: Number(event.currentTarget.value) })}
-              />
-            </label>
+        <label title="Number of answer choices">
+          <span>Choices <strong>{settings.N}</strong></span>
+          <input
+            type="range"
+            min="2"
+            max="8"
+            step="1"
+            value={settings.N}
+            disabled={disabled}
+            onChange={(event) => applyCustom({ N: Number(event.currentTarget.value) })}
+          />
+        </label>
 
-            <label title="Pause before each candidate clip in sequence playback">
-              <span>Gallery pause <strong>{settings.galleryDelay.toFixed(2)}s</strong></span>
-              <input
-                type="range"
-                min="0"
-                max="3"
-                step="0.25"
-                value={settings.galleryDelay}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ galleryDelay: Number(event.currentTarget.value) })}
-              />
-            </label>
-          </div>
+        <label title="Black pause after the prompt before each answer choice plays">
+          <span>Choice wait <strong>{settings.galleryDelay.toFixed(2)}s</strong></span>
+          <input
+            type="range"
+            min="0"
+            max="3"
+            step="0.25"
+            value={settings.galleryDelay}
+            disabled={disabled}
+            onChange={(event) => applyCustom({ galleryDelay: Number(event.currentTarget.value) })}
+          />
+        </label>
+      </div>
 
-          <div className="check-row">
-            <label>
-              <input
-                type="checkbox"
-                checked={settings.replayEnabled}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ replayEnabled: event.currentTarget.checked })}
-              />
-              Replay
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={settings.soundEnabled}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ soundEnabled: event.currentTarget.checked })}
-              />
-              Sound
-            </label>
-          </div>
-
-          <div className="button-row">
-            <button type="button" onClick={onResetScore} disabled={disabled}>
-              Reset score
-            </button>
-          </div>
-        </div>
-
-        <div className="control-column">
+      <details className="advanced-controls">
+        <summary>Advanced</summary>
+        <div className="advanced-grid">
           <div className="preset-row">
             <label>
               <span>Preset</span>
@@ -133,7 +101,7 @@ export function ControlPanel({
 
           <div className="select-row">
             <label className="mode-select">
-              <span>Drill mode</span>
+              <span>Session mode</span>
               <select
                 value={settings.mode}
                 disabled={disabled}
@@ -156,9 +124,30 @@ export function ControlPanel({
                 disabled={disabled}
                 onClick={() => applyCustom({ galleryPlayback: value })}
               >
-                {value === 'sequence' ? 'Sequence' : value === 'allLoop' ? 'All loop' : 'Hover'}
+                {value === 'sequence' ? 'One-by-one' : value === 'allLoop' ? 'All play' : 'Hover'}
               </button>
             ))}
+          </div>
+
+          <div className="check-row">
+            <label>
+              <input
+                type="checkbox"
+                checked={settings.replayEnabled}
+                disabled={disabled}
+                onChange={(event) => applyCustom({ replayEnabled: event.currentTarget.checked })}
+              />
+              Replay
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={settings.soundEnabled}
+                disabled={disabled}
+                onChange={(event) => applyCustom({ soundEnabled: event.currentTarget.checked })}
+              />
+              Sound
+            </label>
           </div>
 
           <div className="range-row">
@@ -190,10 +179,14 @@ export function ControlPanel({
               />
             </label>
           </div>
-        </div>
-      </div>
 
-      <p className="shortcut-hint">Keys: 1-8 choose clips, Space/R replay or reveal, M mute.</p>
+          <button type="button" className="reset-score" onClick={onResetScore} disabled={disabled}>
+            Reset score
+          </button>
+        </div>
+      </details>
+
+      <p className="shortcut-hint">Keys: 1-8 choose, Space/R replay, M mute.</p>
     </aside>
   );
 }

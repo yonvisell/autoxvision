@@ -8,7 +8,6 @@ import { StatusLine } from './components/StatusLine';
 import { isVideoLongEnough } from './lib/clipMath';
 import { applyPreset, defaultSettings, markCustom } from './lib/presets';
 import {
-  highScoreKey,
   loadAnnotations,
   loadHighScore,
   loadSavedPreset,
@@ -24,13 +23,7 @@ import { playTone } from './lib/sounds';
 import { createTrial, updateAnchorStats } from './lib/trialEngine';
 import { fingerprintFile } from './lib/videoFingerprint';
 import { savedPresetPayload } from './lib/presets';
-import {
-  createExportFile,
-  mergeAnnotations,
-  nearestAnnotation,
-  parseExportFile,
-  upsertAnnotation
-} from './lib/annotations';
+import { nearestAnnotation, upsertAnnotation } from './lib/annotations';
 import type { AnchorStats, Annotation, GalleryItem, Settings, Trial } from './types';
 
 type Phase = 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing';
@@ -42,8 +35,16 @@ type VideoState = {
   error: string;
 };
 
+type MissAttempt = {
+  id: string;
+  trial: Trial;
+  resolved: boolean;
+};
+
 const cueDelayMs = 250;
 const correctDelayMs = 280;
+const minLowerHeight = 170;
+const maxLowerHeight = 470;
 
 function App() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings(defaultSettings));
@@ -63,6 +64,10 @@ function App() {
   const [noteText, setNoteText] = useState('');
   const [stats, setStats] = useState<Record<string, AnchorStats>>({});
   const [wrongIds, setWrongIds] = useState<Set<string>>(new Set());
+  const [missHistory, setMissHistory] = useState<MissAttempt[]>([]);
+  const [activeMissId, setActiveMissId] = useState<string | null>(null);
+  const [lowerHeight, setLowerHeight] = useState(260);
+  const [choicesReady, setChoicesReady] = useState(false);
   const [status, setStatus] = useState<{ message: string; tone: 'neutral' | 'good' | 'bad' | 'warn' }>({
     message: 'Choose a local course-walk video to begin.',
     tone: 'neutral'
@@ -159,6 +164,8 @@ function App() {
       });
       setTrial(nextTrial);
       setWrongIds(new Set());
+      setActiveMissId(null);
+      setChoicesReady(false);
       setLastCueStart(nextTrial.cueStart);
       setPhase('cueDelay');
       setStatus({ message: '', tone: 'neutral' });
@@ -176,7 +183,7 @@ function App() {
     if (!isVideoLongEnough(video.duration, settings.T)) {
       setTrial(null);
       setPhase('idle');
-      setStatus({ message: 'Video is too short for the current cue length. Lower cue length to enable trials.', tone: 'warn' });
+      setStatus({ message: 'Video is too short for the current prompt length. Lower prompt length to enable trials.', tone: 'warn' });
       return;
     }
     beginTrial(null);
@@ -204,6 +211,9 @@ function App() {
     setPhase('idle');
     setScore(0);
     setLastCueStart(null);
+    setMissHistory([]);
+    setActiveMissId(null);
+    setChoicesReady(false);
     setStatus({ message: 'Loading video metadata...', tone: 'neutral' });
   };
 
@@ -256,7 +266,7 @@ function App() {
   const handleCueEnded = () => {
     if (phase === 'cuePlaying') {
       setPhase('answering');
-      reactionStartRef.current = performance.now();
+      setChoicesReady(false);
       setStatus(
         settings.mode === 'mentalLap'
           ? { message: 'Run the continuation in your head, then reveal.', tone: 'neutral' }
@@ -275,6 +285,7 @@ function App() {
       return;
     }
     setGallerySequenceIndex(null);
+    setChoicesReady(false);
     setPhase('cueDelay');
     timeoutRef.current = window.setTimeout(() => setPhase('cuePlaying'), cueDelayMs);
   };
@@ -289,7 +300,7 @@ function App() {
 
   const handleSelect = useCallback(
     (id: string) => {
-      if (!trial || phase !== 'answering' || settings.mode === 'mentalLap') {
+      if (!trial || phase !== 'answering' || !choicesReady || settings.mode === 'mentalLap') {
         return;
       }
       const item = trial.gallery.find((entry) => entry.id === id);
@@ -299,22 +310,41 @@ function App() {
 
       const reactionMs = performance.now() - reactionStartRef.current;
       if (item.isCorrect) {
-        updateScore(1);
+        if (!activeMissId) {
+          updateScore(1);
+          setStats((previous) => updateAnchorStats(previous, trial.cueStart, true, reactionMs));
+        }
         playTone('correct', settings.soundEnabled);
-        setStats((previous) => updateAnchorStats(previous, trial.cueStart, true, reactionMs));
-        setStatus({ message: 'Correct. Watch the answer clip.', tone: 'good' });
+        if (activeMissId) {
+          setMissHistory((previous) =>
+            previous.map((miss) => (miss.id === activeMissId ? { ...miss, resolved: true } : miss))
+          );
+        }
+        setStatus({ message: activeMissId ? 'Miss solved. Watch the answer clip.' : 'Correct. Watch the answer clip.', tone: 'good' });
         timeoutRef.current = window.setTimeout(() => {
           setPhase('revealing');
         }, correctDelayMs);
       } else {
-        updateScore(-1);
         playTone('wrong', settings.soundEnabled);
-        setStats((previous) => updateAnchorStats(previous, trial.cueStart, false, reactionMs));
         setWrongIds((previous) => new Set(previous).add(id));
-        setStatus({ message: 'Not that one. Try again.', tone: 'bad' });
+        if (!activeMissId) {
+          updateScore(-1);
+          setStats((previous) => updateAnchorStats(previous, trial.cueStart, false, reactionMs));
+          setMissHistory((previous) =>
+            [
+              {
+                id: `miss-${trial.id}-${Date.now()}`,
+                trial,
+                resolved: false
+              },
+              ...previous
+            ].slice(0, 8)
+          );
+        }
+        setStatus({ message: activeMissId ? 'Still not it. Try the miss again.' : 'Not that one. Try again.', tone: 'bad' });
       }
     },
-    [phase, settings.mode, settings.soundEnabled, trial]
+    [activeMissId, choicesReady, phase, settings.mode, settings.soundEnabled, trial]
   );
 
   useEffect(() => {
@@ -348,8 +378,9 @@ function App() {
   }, [handleSelect, phase, revealAnswer, settings.mode, trial]);
 
   useEffect(() => {
-    if (phase !== 'answering' || settings.galleryPlayback !== 'sequence' || !trial || trial.gallery.length === 0) {
+    if (phase !== 'answering' || !trial || trial.gallery.length === 0) {
       setGallerySequenceIndex(null);
+      setChoicesReady(false);
       return undefined;
     }
 
@@ -360,7 +391,18 @@ function App() {
       });
 
     const runSequence = async () => {
+      setChoicesReady(false);
       await wait(settings.galleryDelay * 1000);
+      if (!active) {
+        return;
+      }
+      reactionStartRef.current = performance.now();
+      setChoicesReady(true);
+
+      if (settings.galleryPlayback !== 'sequence') {
+        return;
+      }
+
       for (let index = 0; index < trial.gallery.length; index += 1) {
         if (!active) {
           return;
@@ -375,6 +417,7 @@ function App() {
       }
 
       if (active && settings.replayEnabled) {
+        setChoicesReady(false);
         setPhase('cueDelay');
         setStatus({ message: '', tone: 'neutral' });
         await wait(cueDelayMs);
@@ -396,39 +439,35 @@ function App() {
     setStatus({ message: 'Score reset for this session.', tone: 'neutral' });
   };
 
-  const exportAnnotations = () => {
-    if (!video.fingerprint) {
+  const retryMiss = (id: string) => {
+    const miss = missHistory.find((entry) => entry.id === id);
+    if (!miss) {
       return;
     }
-    const exportFile = createExportFile(video.fingerprint, video.file?.name ?? 'video', annotations, settings, {
-      [highScoreKey(video.fingerprint, settings.mode)]: highScore
-    });
-    const blob = new Blob([JSON.stringify(exportFile, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `autoxvision-notes-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    setStatus({ message: 'Annotations exported as JSON.', tone: 'good' });
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+    setTrial(miss.trial);
+    setWrongIds(new Set());
+    setActiveMissId(miss.id);
+    setChoicesReady(false);
+    setGallerySequenceIndex(null);
+    setLastCueStart(miss.trial.cueStart);
+    setPhase('cueDelay');
+    setStatus({ message: 'Retrying a missed prompt.', tone: 'neutral' });
+    timeoutRef.current = window.setTimeout(() => setPhase('cuePlaying'), cueDelayMs);
   };
 
-  const importAnnotations = async (file: File | null) => {
-    if (!file || !video.fingerprint) {
+  const startResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const resizeLowerDeck = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.buttons !== 1) {
       return;
     }
-    try {
-      const parsed = parseExportFile(JSON.parse(await file.text()));
-      const mismatch = parsed.videoFingerprint !== video.fingerprint;
-      setAnnotations((previous) => mergeAnnotations(previous, parsed.annotations, video.fingerprint));
-      setStatus({
-        message: mismatch
-          ? 'Imported notes, but fingerprint differs; notes may refer to another video.'
-          : 'Imported notes and merged by cue time.',
-        tone: mismatch ? 'warn' : 'good'
-      });
-    } catch (error) {
-      setStatus({ message: error instanceof Error ? error.message : 'Invalid annotation import.', tone: 'bad' });
-    }
+    const next = window.innerHeight - event.clientY - 10;
+    setLowerHeight(Math.min(maxLowerHeight, Math.max(minLowerHeight, next)));
   };
 
   const cueStart = trial?.cueStart ?? null;
@@ -440,22 +479,25 @@ function App() {
       return '';
     }
     if (phase === 'answering') {
-      if (settings.galleryPlayback === 'sequence') {
-        return 'Pick the next clip. Options play one at a time.';
+      if (!choicesReady) {
+        return `Hold the blackout. Choices unlock in ${settings.galleryDelay.toFixed(1)}s.`;
       }
-      return 'Pick the clip that happens next.';
+      if (settings.galleryPlayback === 'sequence') {
+        return 'Pick what happens next. Choices play one at a time.';
+      }
+      return 'Pick what happens next.';
     }
     if (phase === 'cueDelay' || phase === 'cuePlaying') {
-      return 'Watch the cue. The choices unlock after blackout.';
+      return 'Watch the prompt. Choices unlock after blackout.';
     }
     if (phase === 'revealing') {
       return 'Correct answer is highlighted.';
     }
     return '';
-  }, [phase, settings.galleryPlayback, trial]);
+  }, [choicesReady, phase, settings.galleryDelay, settings.galleryPlayback, trial]);
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" style={{ '--lower-height': `${lowerHeight}px` } as React.CSSProperties}>
       <div className="metadata-loader" aria-hidden="true">
         {video.url ? <video src={video.url} onLoadedMetadata={handleVideoMetadata} onError={handleVideoError} preload="metadata" /> : null}
       </div>
@@ -483,6 +525,15 @@ function App() {
 
       <StatusLine message={video.error || status.message} tone={video.error ? 'bad' : status.tone} />
 
+      <button
+        type="button"
+        className="deck-resizer"
+        aria-label="Resize prompt and choices"
+        title="Drag to resize prompt and choices"
+        onPointerDown={startResize}
+        onPointerMove={resizeLowerDeck}
+      />
+
       <section className="lower-deck">
         <ControlPanel
           settings={settings}
@@ -493,8 +544,6 @@ function App() {
           onPresetChange={selectPreset}
           onSavePreset={handleSavePreset}
           onResetScore={resetScore}
-          onExport={exportAnnotations}
-          onImport={importAnnotations}
         />
         <Gallery
           videoUrl={video.url}
@@ -502,10 +551,17 @@ function App() {
           playback={settings.galleryPlayback}
           activeSequenceIndex={gallerySequenceIndex}
           instruction={galleryInstruction}
-          disabled={phase !== 'answering'}
+          disabled={phase !== 'answering' || !choicesReady}
           hidden={galleryHidden}
           wrongIds={wrongIds}
           revealCorrect={phase === 'revealing'}
+          misses={missHistory.map((miss) => ({
+            id: miss.id,
+            label: `${miss.trial.cueStart.toFixed(1)}s`,
+            resolved: miss.resolved,
+            active: miss.id === activeMissId
+          }))}
+          onRetryMiss={retryMiss}
           onSelect={handleSelect}
         />
       </section>

@@ -16,8 +16,9 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Video clip-loop implementation: native HTML5 video elements sharing the selected file object URL; cue playback is controlled by seeking and requestAnimationFrame end checks, gallery clips loop or play on hover.
 - Testing approach: Vitest covers pure clip math, trial generation, presets, anchor stats, and annotation export/import behavior. Browser inspection used a generated temporary WebM file.
 - Runtime assumption: Node >=20 is required for Vite/Vitest. The machine default `/usr/local/bin/node` is v11.14.0, so verification used the bundled Node v24.14.0 and npm 10.9.8.
-- UI revision: User requested a calmer drill surface. Default cue length is now 2.5s, gallery playback defaults to one-at-a-time sequence mode, and a 1.0s gallery pause slider controls the blackout before each candidate clip.
+- UI revision: User requested a calmer drill surface. Default cue length is now 2.5s, gallery playback defaults to one-at-a-time sequence mode, and a 2.0s Choice wait slider controls the blackout before each candidate clip.
 - UI revision: Visible notes import/export buttons were removed from the main controls at user request; notes autosave remains validated.
+- Adaptive UI revision: Extended controls live in a closed-by-default Advanced popover; the lower prompt/choices split is draggable; crowded galleries wrap into two rows to keep choices legible; miss-history chips allow wrong prompts to be retried and marked solved.
 
 ## Work log
 
@@ -63,6 +64,11 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Commit: `Refine drill UI and gallery sequencing`
 - Notes: Removed cue/answer timestamp subtitle, added cone mark, renamed high score, compacted controls into two columns, renamed T/N/t0/t1 labels, added saved preset control, moved gallery instructions into the gallery, reduced notes field prominence, and changed default gallery playback to sequenced clips.
 
+### Slice 8 — Adaptive layout and miss retries
+
+- Status: Complete.
+- Notes: Reworked the lower deck into a cleaner resizable split, moved extended controls into a closed-by-default Advanced popover, made answer choices resize without horizontal scroll, used two rows for crowded 5-8 choice sets, added miss-history retry chips, removed confusing prompt-window text during blackout, renamed controls around prompt/choices, and exposed Choice wait at a 2.00s default with migration from the prior 1.00s sequence default.
+
 ## Verification log
 
 Commands run:
@@ -101,6 +107,27 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
 # Result: passed, Vite production build written to dist/.
+
+# Adaptive layout / miss-retry revision:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js install --no-audit --no-fund
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 15 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev
+# Result: Vite ready at http://127.0.0.1:5174/ because port 5173 was already occupied.
 ```
 
 Visual inspection:
@@ -112,6 +139,8 @@ Visual inspection:
 - Issues found and fixed: first screenshot showed controls/gallery below the viewport, then later screenshots showed cue video overflow over the gallery. CSS grid sizing and cue video absolute fill fixed both; final automated overlap check passed.
 - Revision screenshots: `/tmp/autoxvision-revision-final-shots/01-no-file.png` through `/tmp/autoxvision-revision-final-shots/05-mental-lap.png`.
 - Revision checks: Verified no cue/answer subtitle, default cue length 2.5s, high score label, gallery instruction in gallery, no visible notes import/export buttons, no control-panel scroll at 1280x720, saved preset writes to localStorage, notes autosave writes to localStorage, wrong/correct feedback, and mental-lap gallery hidden state.
+- Adaptive revision screenshots: `/tmp/autoxvision-adaptive-shots/01-no-file.png` through `/tmp/autoxvision-adaptive-shots/08-mental-lap.png`.
+- Adaptive revision checks: Verified no “Ready” text, Advanced closed by default and opening as a popover, Choice wait visible at 2.00s, choices disabled during the wait and unlocked after it, draggable prompt/choice split in both directions, N=8 resizing into a no-scroll two-row gallery, wrong-answer miss history, miss retry/resolved state, saved preset localStorage write, notes autosave, and mental-lap choices-hidden state.
 
 ## Remaining limitations
 
@@ -124,8 +153,8 @@ List only real limitations that remain at handoff.
 
 ## Final handoff summary
 
-- Built: Complete local-first temporal-occlusion recall trainer with file loading, cue/gallery playback, scoring, presets, modes, notes, persistence, export/import, sounds, and tests.
-- How to run: `npm install`, then `npm run dev` with Node >=20; local URL is `http://127.0.0.1:5173/`.
+- Built: Complete local-first temporal-occlusion recall trainer with file loading, prompt/choice playback, adaptive choice layout, miss retry history, scoring, presets, modes, notes, persistence, export/import logic, sounds, and tests.
+- How to run: `npm install`, then `npm run dev` with Node >=20; current local URL is `http://127.0.0.1:5174/` because 5173 was occupied.
 - How to build: `npm run build`.
 - Tests: `npm run lint`, `npm test`, and `npm run build` passed.
 - Notes for Yon: Shortcut help is visible in the controls area. Local videos stay out of git via `.gitignore`.

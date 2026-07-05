@@ -81,11 +81,12 @@ export function GalleryTile({
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      aria-label={`Gallery clip ${index + 1}`}
+      aria-label={`Pick answer choice ${index + 1}`}
     >
       <video ref={videoRef} src={videoUrl} muted playsInline preload="metadata" />
       {playback === 'sequence' && !isSequenceActive ? <span className="tile-blackout" /> : null}
       <span className="tile-number">{index + 1}</span>
+      <span className="tile-pick">Pick</span>
     </button>
   );
 }

@@ -25,6 +25,7 @@ export function CuePane({
   const [playError, setPlayError] = useState('');
   const showVideo = Boolean(videoUrl && clip && (phase === 'cuePlaying' || phase === 'revealing'));
   const isReveal = phase === 'revealing';
+  const blackoutText = phase === 'idle' ? 'Choose a video to begin' : '';
 
   useEffect(() => {
     endedRef.current = onClipEnded;
@@ -94,16 +95,14 @@ export function CuePane({
   };
 
   return (
-    <section className={`cue-pane ${isReveal ? 'cue-pane-reveal' : ''}`} aria-label="Cue clip">
-      <button className="cue-stage" type="button" onClick={handleClick} title="Click to replay cue when replay is enabled">
+    <section className={`cue-pane ${isReveal ? 'cue-pane-reveal' : ''}`} aria-label="Prompt clip">
+      <button className="cue-stage" type="button" onClick={handleClick} title="Click to replay the prompt when replay is enabled">
         {videoUrl ? (
           <video ref={videoRef} src={videoUrl} playsInline muted={phase === 'cuePlaying'} preload="metadata" />
         ) : null}
         {!showVideo ? (
           <div className="blackout">
-            <span>
-              {phase === 'idle' ? 'Choose a video to begin' : phase === 'cueDelay' ? 'Ready' : 'Recall the next state'}
-            </span>
+            {blackoutText ? <span>{blackoutText}</span> : null}
           </div>
         ) : null}
       </button>
@@ -114,7 +113,7 @@ export function CuePane({
           onClick={onReplay}
           disabled={!replayEnabled || !videoUrl || phase !== 'answering'}
         >
-          Replay cue
+          Replay prompt
         </button>
         <button
           className="cue-action cue-action-primary"
@@ -122,7 +121,7 @@ export function CuePane({
           onClick={onReveal}
           disabled={!videoUrl || phase !== 'answering'}
         >
-          Reveal answer
+          Show answer
         </button>
         {playError ? <span className="inline-warn">{playError}</span> : null}
       </div>

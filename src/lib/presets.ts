@@ -6,7 +6,7 @@ export const defaultSettings: Settings = {
   mode: 'random',
   preset: 'custom',
   galleryPlayback: 'sequence',
-  galleryDelay: 1,
+  galleryDelay: 2,
   replayEnabled: true,
   soundEnabled: true,
   t0: 0,
@@ -16,9 +16,9 @@ export const defaultSettings: Settings = {
 export type BuiltInPreset = Exclude<Preset, 'custom' | 'saved'>;
 
 export const presetSettings: Record<BuiltInPreset, Partial<Settings>> = {
-  encoding: { T: 2.5, N: 2, replayEnabled: true, galleryPlayback: 'sequence', galleryDelay: 1 },
-  learning: { T: 2, N: 3, replayEnabled: true, galleryPlayback: 'sequence', galleryDelay: 0.75 },
-  performance: { T: 1.25, N: 4, replayEnabled: false, galleryPlayback: 'hover', galleryDelay: 0.75 },
+  encoding: { T: 2.5, N: 2, replayEnabled: true, galleryPlayback: 'sequence', galleryDelay: 2 },
+  learning: { T: 2, N: 3, replayEnabled: true, galleryPlayback: 'sequence', galleryDelay: 1.5 },
+  performance: { T: 1.25, N: 4, replayEnabled: false, galleryPlayback: 'hover', galleryDelay: 1 },
   pressure: { T: 0.75, N: 6, replayEnabled: false, galleryPlayback: 'hover', galleryDelay: 0.5 }
 };
 

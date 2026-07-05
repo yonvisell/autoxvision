@@ -20,6 +20,6 @@ describe('presets', () => {
   it('uses a longer cue and sequential gallery playback by default', () => {
     expect(defaultSettings.T).toBe(2.5);
     expect(defaultSettings.galleryPlayback).toBe('sequence');
-    expect(defaultSettings.galleryDelay).toBe(1);
+    expect(defaultSettings.galleryDelay).toBe(2);
   });
 });
