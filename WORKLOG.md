@@ -69,6 +69,11 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Status: Complete.
 - Notes: Reworked the lower deck into a cleaner resizable split, moved extended controls into a closed-by-default Advanced popover, made answer choices resize without horizontal scroll, used two rows for crowded 5-8 choice sets, added miss-history retry chips, removed confusing prompt-window text during blackout, renamed controls around prompt/choices, and exposed Choice wait at a 2.00s default with migration from the prior 1.00s sequence default.
 
+### Slice 9 — Right-side controls revision
+
+- Status: Complete.
+- Notes: Stopped local dev servers, moved the control panel to the right of the choices, kept Replay prompt visually enabled after video load, moved Preset and Session mode out of Advanced, and raised the prompt duration slider max to 5.00s.
+
 ## Verification log
 
 Commands run:
@@ -128,6 +133,23 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev
 # Result: Vite ready at http://127.0.0.1:5174/ because port 5173 was already occupied.
+
+# Right-side controls revision:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 15 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev
+# Result: Vite ready at http://127.0.0.1:5173/ for visual validation; stopped before handoff.
 ```
 
 Visual inspection:
@@ -141,6 +163,8 @@ Visual inspection:
 - Revision checks: Verified no cue/answer subtitle, default cue length 2.5s, high score label, gallery instruction in gallery, no visible notes import/export buttons, no control-panel scroll at 1280x720, saved preset writes to localStorage, notes autosave writes to localStorage, wrong/correct feedback, and mental-lap gallery hidden state.
 - Adaptive revision screenshots: `/tmp/autoxvision-adaptive-shots/01-no-file.png` through `/tmp/autoxvision-adaptive-shots/08-mental-lap.png`.
 - Adaptive revision checks: Verified no “Ready” text, Advanced closed by default and opening as a popover, Choice wait visible at 2.00s, choices disabled during the wait and unlocked after it, draggable prompt/choice split in both directions, N=8 resizing into a no-scroll two-row gallery, wrong-answer miss history, miss retry/resolved state, saved preset localStorage write, notes autosave, and mental-lap choices-hidden state.
+- Right-controls revision screenshot: `/tmp/autoxvision-right-controls-shots/01-right-controls-loaded.png`.
+- Right-controls revision checks: Verified control panel right of choices, Preset and Session mode visible outside Advanced, Advanced closed and not containing those controls, Replay prompt not disabled after video load, prompt max is 5, no horizontal overflow, and no listeners remain on ports 5173/5174 after validation.
 
 ## Remaining limitations
 
@@ -154,7 +178,7 @@ List only real limitations that remain at handoff.
 ## Final handoff summary
 
 - Built: Complete local-first temporal-occlusion recall trainer with file loading, prompt/choice playback, adaptive choice layout, miss retry history, scoring, presets, modes, notes, persistence, export/import logic, sounds, and tests.
-- How to run: `npm install`, then `npm run dev` with Node >=20; current local URL is `http://127.0.0.1:5174/` because 5173 was occupied.
+- How to run: `npm install`, then `npm run dev` with Node >=20; no dev server is left running at handoff.
 - How to build: `npm run build`.
 - Tests: `npm run lint`, `npm test`, and `npm run build` passed.
 - Notes for Yon: Shortcut help is visible in the controls area. Local videos stay out of git via `.gitignore`.

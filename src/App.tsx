@@ -535,16 +535,6 @@ function App() {
       />
 
       <section className="lower-deck">
-        <ControlPanel
-          settings={settings}
-          duration={video.duration}
-          disabled={panelDisabled}
-          onFileChange={handleFileChange}
-          onSettingsChange={updateSettings}
-          onPresetChange={selectPreset}
-          onSavePreset={handleSavePreset}
-          onResetScore={resetScore}
-        />
         <Gallery
           videoUrl={video.url}
           items={trial?.gallery ?? []}
@@ -563,6 +553,16 @@ function App() {
           }))}
           onRetryMiss={retryMiss}
           onSelect={handleSelect}
+        />
+        <ControlPanel
+          settings={settings}
+          duration={video.duration}
+          disabled={panelDisabled}
+          onFileChange={handleFileChange}
+          onSettingsChange={updateSettings}
+          onPresetChange={selectPreset}
+          onSavePreset={handleSavePreset}
+          onResetScore={resetScore}
         />
       </section>
     </main>

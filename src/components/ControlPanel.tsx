@@ -40,7 +40,7 @@ export function ControlPanel({
           <input
             type="range"
             min="0.25"
-            max="3"
+            max="5"
             step="0.05"
             value={settings.T}
             disabled={disabled}
@@ -75,46 +75,48 @@ export function ControlPanel({
         </label>
       </div>
 
+      <div className="core-selects">
+        <div className="preset-row">
+          <label>
+            <span>Preset</span>
+            <select
+              value={settings.preset}
+              disabled={disabled}
+              onChange={(event) => onPresetChange(event.currentTarget.value as Preset)}
+            >
+              <option value="custom">Custom</option>
+              <option value="saved">Saved</option>
+              <option value="encoding">Encoding</option>
+              <option value="learning">Learning</option>
+              <option value="performance">Performance</option>
+              <option value="pressure">Pressure</option>
+            </select>
+          </label>
+          <button type="button" className="save-preset" disabled={disabled} onClick={onSavePreset}>
+            Save preset
+          </button>
+        </div>
+
+        <div className="select-row">
+          <label className="mode-select">
+            <span>Session mode</span>
+            <select
+              value={settings.mode}
+              disabled={disabled}
+              onChange={(event) => applyCustom({ mode: event.currentTarget.value as Mode })}
+            >
+              <option value="random">Random recall</option>
+              <option value="sequential">Sequential recall</option>
+              <option value="weakSpots">Weak spots</option>
+              <option value="mentalLap">Mental lap</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
       <details className="advanced-controls">
         <summary>Advanced</summary>
         <div className="advanced-grid">
-          <div className="preset-row">
-            <label>
-              <span>Preset</span>
-              <select
-                value={settings.preset}
-                disabled={disabled}
-                onChange={(event) => onPresetChange(event.currentTarget.value as Preset)}
-              >
-                <option value="custom">Custom</option>
-                <option value="saved">Saved</option>
-                <option value="encoding">Encoding</option>
-                <option value="learning">Learning</option>
-                <option value="performance">Performance</option>
-                <option value="pressure">Pressure</option>
-              </select>
-            </label>
-            <button type="button" className="save-preset" disabled={disabled} onClick={onSavePreset}>
-              Save preset
-            </button>
-          </div>
-
-          <div className="select-row">
-            <label className="mode-select">
-              <span>Session mode</span>
-              <select
-                value={settings.mode}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ mode: event.currentTarget.value as Mode })}
-              >
-                <option value="random">Random recall</option>
-                <option value="sequential">Sequential recall</option>
-                <option value="weakSpots">Weak spots</option>
-                <option value="mentalLap">Mental lap</option>
-              </select>
-            </label>
-          </div>
-
           <div className="segmented" aria-label="Gallery playback">
             {(['sequence', 'hover', 'allLoop'] as GalleryPlayback[]).map((value) => (
               <button

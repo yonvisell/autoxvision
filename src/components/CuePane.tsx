@@ -111,7 +111,7 @@ export function CuePane({
           className="cue-action cue-action-secondary"
           type="button"
           onClick={onReplay}
-          disabled={!replayEnabled || !videoUrl || phase !== 'answering'}
+          disabled={!replayEnabled || !videoUrl}
         >
           Replay prompt
         </button>

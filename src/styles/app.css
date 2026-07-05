@@ -292,7 +292,7 @@ textarea:disabled {
 .lower-deck {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(235px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(235px, 300px);
   gap: 12px;
 }
 
@@ -333,10 +333,10 @@ textarea:disabled {
   overflow: visible;
   position: relative;
   border: 0;
-  border-right: 1px solid rgba(47, 60, 76, 0.75);
+  border-left: 1px solid rgba(47, 60, 76, 0.75);
   border-radius: 0;
   background: transparent;
-  padding: 0 11px 0 0;
+  padding: 0 0 0 11px;
   display: grid;
   grid-template-rows: auto auto auto auto;
   gap: 7px;
@@ -345,6 +345,7 @@ textarea:disabled {
 
 .file-control,
 .quick-controls label,
+.core-selects,
 .preset-row label,
 .select-row label,
 .range-row label {
@@ -366,6 +367,11 @@ textarea:disabled {
 .quick-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.core-selects {
+  display: grid;
   gap: 6px;
 }
 
@@ -523,7 +529,7 @@ input[type="number"] {
 
 .advanced-grid {
   position: absolute;
-  left: 0;
+  right: 0;
   bottom: calc(100% + 8px);
   z-index: 10;
   width: min(560px, calc(100vw - 24px));
@@ -728,8 +734,8 @@ input[type="number"] {
   }
 
   .control-panel {
-    border-right: 0;
-    padding-right: 0;
+    border-left: 0;
+    padding-left: 0;
   }
 
   .advanced-grid {
