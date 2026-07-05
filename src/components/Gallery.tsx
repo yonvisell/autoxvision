@@ -72,7 +72,7 @@ export function Gallery({
         </button>
         <div>
           <strong>Mental lap</strong>
-          <span>Run the continuation mentally, then press Space or Show answer.</span>
+          <span>Run the continuation mentally, then press Show answer or Enter.</span>
         </div>
       </section>
     );

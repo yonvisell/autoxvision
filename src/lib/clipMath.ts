@@ -1,6 +1,7 @@
 import type { Clip } from '../types';
 
 export const EPS = 1 / 30;
+export const MAX_FORWARD_GAP_SECONDS = 180;
 
 export function roundTime(value: number, places = 3): number {
   const scale = 10 ** places;
@@ -15,7 +16,7 @@ export function maxCueStart(duration: number, T: number, t0 = 0, maxForwardGap =
   if (!Number.isFinite(duration) || duration <= 0) {
     return t0;
   }
-  return Math.max(t0, duration - 2 * T - Math.max(0, maxForwardGap) - EPS);
+  return Math.max(t0, duration - 2 * T - Math.min(MAX_FORWARD_GAP_SECONDS, Math.max(0, maxForwardGap)) - EPS);
 }
 
 export function clampT1(
@@ -33,7 +34,14 @@ export function clampT1(
 }
 
 export function isVideoLongEnough(duration: number, T: number, maxForwardGap = 0): boolean {
-  return Number.isFinite(duration) && duration >= 2 * T + Math.max(0, maxForwardGap) + EPS;
+  return Number.isFinite(duration) && duration >= 2 * T + Math.min(MAX_FORWARD_GAP_SECONDS, Math.max(0, maxForwardGap)) + EPS;
+}
+
+export function maxForwardGapLimit(duration: number | null | undefined, T: number): number {
+  if (!Number.isFinite(duration)) {
+    return MAX_FORWARD_GAP_SECONDS;
+  }
+  return Math.max(0, Math.min(MAX_FORWARD_GAP_SECONDS, (duration as number) - T));
 }
 
 export function clip(start: number, duration: number): Clip {

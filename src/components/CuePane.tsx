@@ -112,6 +112,7 @@ export function CuePane({
           type="button"
           onClick={onReplay}
           disabled={!replayEnabled || !videoUrl}
+          title="Replay the prompt clip before choosing"
         >
           Replay prompt
         </button>
@@ -120,6 +121,7 @@ export function CuePane({
           type="button"
           onClick={onReveal}
           disabled={!videoUrl || phase !== 'answering'}
+          title="Reveal and play the correct continuation"
         >
           Show answer
         </button>

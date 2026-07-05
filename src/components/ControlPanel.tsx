@@ -3,6 +3,7 @@ import type { GalleryPlayback, Mode, Preset, Settings } from '../types';
 type ControlPanelProps = {
   settings: Settings;
   duration: number | null;
+  maxForwardGapLimit: number;
   disabled: boolean;
   collapsed: boolean;
   onFileChange: (file: File | null) => void;
@@ -16,6 +17,7 @@ type ControlPanelProps = {
 export function ControlPanel({
   settings,
   duration,
+  maxForwardGapLimit,
   disabled,
   collapsed,
   onFileChange,
@@ -26,15 +28,16 @@ export function ControlPanel({
   onToggleCollapsed
 }: ControlPanelProps) {
   const applyCustom = (patch: Partial<Settings>) => onSettingsChange(patch);
+  const forwardGapMax = Math.max(0, maxForwardGapLimit);
   const setMinForwardGap = (value: number) => {
-    const minForwardGap = Math.min(10, Math.max(0, value));
+    const minForwardGap = Math.min(forwardGapMax, Math.max(0, value));
     applyCustom({
       minForwardGap,
-      maxForwardGap: Math.max(settings.maxForwardGap, minForwardGap)
+      maxForwardGap: Math.min(forwardGapMax, Math.max(settings.maxForwardGap, minForwardGap))
     });
   };
   const setMaxForwardGap = (value: number) => {
-    const maxForwardGap = Math.min(10, Math.max(0, value));
+    const maxForwardGap = Math.min(forwardGapMax, Math.max(0, value));
     applyCustom({
       minForwardGap: Math.min(settings.minForwardGap, maxForwardGap),
       maxForwardGap
@@ -44,7 +47,7 @@ export function ControlPanel({
   if (collapsed) {
     return (
       <aside className="control-panel control-panel-collapsed" aria-label="Controls">
-        <button type="button" className="collapse-tab" onClick={onToggleCollapsed} title="Expand controls" aria-label="Expand controls">
+          <button type="button" className="collapse-tab" onClick={onToggleCollapsed} title="Expand controls" aria-label="Expand controls">
           Controls
         </button>
       </aside>
@@ -53,7 +56,7 @@ export function ControlPanel({
 
   return (
     <aside className="control-panel" aria-label="Controls">
-      <button type="button" className="panel-collapse-button" onClick={onToggleCollapsed} title="Collapse controls" aria-label="Collapse controls">
+      <button type="button" className="panel-collapse-button" onClick={onToggleCollapsed} title="Collapse controls to a narrow rail" aria-label="Collapse controls">
         Collapse
       </button>
 
@@ -124,7 +127,13 @@ export function ControlPanel({
               <option value="pressure">Pressure</option>
             </select>
           </label>
-          <button type="button" className="save-preset" disabled={disabled} onClick={onSavePreset}>
+          <button
+            type="button"
+            className="save-preset"
+            disabled={disabled}
+            onClick={onSavePreset}
+            title="Save the current control values as your reusable preset"
+          >
             Save preset
           </button>
         </div>
@@ -146,111 +155,113 @@ export function ControlPanel({
         </div>
       </div>
 
-      <details className="advanced-controls">
-        <summary>Advanced</summary>
-        <div className="advanced-grid">
-          <div className="segmented" aria-label="Gallery playback">
-            {(['sequence', 'hover', 'allLoop'] as GalleryPlayback[]).map((value) => (
-              <button
-                type="button"
-                key={value}
-                className={settings.galleryPlayback === value ? 'active' : ''}
-                disabled={disabled}
-                onClick={() => applyCustom({ galleryPlayback: value })}
-              >
-                {value === 'sequence' ? 'One-by-one' : value === 'allLoop' ? 'All play' : 'Hover'}
-              </button>
-            ))}
-          </div>
-
-          <div className="check-row">
-            <label>
-              <input
-                type="checkbox"
-                checked={settings.replayEnabled}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ replayEnabled: event.currentTarget.checked })}
-              />
-              Replay
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={settings.soundEnabled}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ soundEnabled: event.currentTarget.checked })}
-              />
-              Sound
-            </label>
-          </div>
-
-          <div className="range-row">
-            <label title="Earliest source-time gap between prompt end and continuation starts">
-              <span>Min gap <strong>{settings.minForwardGap.toFixed(2)}s</strong></span>
-              <input
-                type="range"
-                min="0"
-                max="10"
-                step="0.25"
-                value={settings.minForwardGap}
-                disabled={disabled}
-                onChange={(event) => setMinForwardGap(Number(event.currentTarget.value))}
-              />
-            </label>
-            <label title="Latest source-time gap between prompt end and sampled continuation starts">
-              <span>Max gap <strong>{settings.maxForwardGap.toFixed(2)}s</strong></span>
-              <input
-                type="range"
-                min="0"
-                max="10"
-                step="0.25"
-                value={settings.maxForwardGap}
-                disabled={disabled}
-                onChange={(event) => setMaxForwardGap(Number(event.currentTarget.value))}
-              />
-            </label>
-          </div>
-
-          <div className="range-row">
-            <label title="Lower cue-start bound">
-              <span>Start (s)</span>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={settings.t0}
-                disabled={disabled}
-                onChange={(event) => applyCustom({ t0: Math.max(0, Number(event.currentTarget.value) || 0) })}
-              />
-            </label>
-
-            <label title="Optional upper cue-start bound">
-              <span>End (s)</span>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={settings.t1 ?? ''}
-                placeholder={duration ? duration.toFixed(1) : 'auto'}
-                disabled={disabled}
-                onChange={(event) =>
-                  applyCustom({
-                    t1: event.currentTarget.value === '' ? null : Math.max(0, Number(event.currentTarget.value) || 0)
-                  })
-                }
-              />
-            </label>
-          </div>
-
-          <div className="range-row advanced-actions-row">
-            <button type="button" className="reset-score" onClick={onResetScore} disabled={disabled}>
-              Reset score
+      <div className="playback-controls">
+        <div className="segmented" aria-label="Gallery playback">
+          {(['sequence', 'hover', 'allLoop'] as GalleryPlayback[]).map((value) => (
+            <button
+              type="button"
+              key={value}
+              className={settings.galleryPlayback === value ? 'active' : ''}
+              disabled={disabled}
+              onClick={() => applyCustom({ galleryPlayback: value })}
+              title={
+                value === 'sequence'
+                  ? 'Play continuation choices one at a time after the wait'
+                  : value === 'allLoop'
+                    ? 'Loop all continuation choices at once'
+                    : 'Play a continuation choice while you hover or focus it'
+              }
+            >
+              {value === 'sequence' ? 'One-by-one' : value === 'allLoop' ? 'All play' : 'Hover'}
             </button>
-          </div>
+          ))}
         </div>
-      </details>
 
-      <p className="shortcut-hint">Keys: 1-8 choose, Space/R replay, M mute.</p>
+        <div className="check-row">
+          <label title="Allow Replay prompt while answering">
+            <input
+              type="checkbox"
+              checked={settings.replayEnabled}
+              disabled={disabled}
+              onChange={(event) => applyCustom({ replayEnabled: event.currentTarget.checked })}
+            />
+            Replay
+          </label>
+          <label title="Play correct and wrong feedback tones">
+            <input
+              type="checkbox"
+              checked={settings.soundEnabled}
+              disabled={disabled}
+              onChange={(event) => applyCustom({ soundEnabled: event.currentTarget.checked })}
+            />
+            Sound
+          </label>
+        </div>
+      </div>
+
+      <div className="range-row">
+        <label title="Earliest source-time gap between prompt end and sampled continuation starts">
+          <span>Min gap <strong>{settings.minForwardGap.toFixed(2)}s</strong></span>
+          <input
+            type="range"
+            min="0"
+            max={forwardGapMax}
+            step="0.25"
+            value={settings.minForwardGap}
+            disabled={disabled || forwardGapMax <= 0}
+            onChange={(event) => setMinForwardGap(Number(event.currentTarget.value))}
+          />
+        </label>
+        <label title={`Latest source-time gap. Capped at the smaller of 180s or video end minus clip length (${forwardGapMax.toFixed(2)}s now).`}>
+          <span>Max gap <strong>{settings.maxForwardGap.toFixed(2)}s</strong></span>
+          <input
+            type="range"
+            min="0"
+            max={forwardGapMax}
+            step="0.25"
+            value={settings.maxForwardGap}
+            disabled={disabled || forwardGapMax <= 0}
+            onChange={(event) => setMaxForwardGap(Number(event.currentTarget.value))}
+          />
+        </label>
+      </div>
+
+      <div className="range-row">
+        <label title="Lower cue-start bound">
+          <span>Start (s)</span>
+          <input
+            type="number"
+            min="0"
+            step="0.1"
+            value={settings.t0}
+            disabled={disabled}
+            onChange={(event) => applyCustom({ t0: Math.max(0, Number(event.currentTarget.value) || 0) })}
+          />
+        </label>
+
+        <label title="Optional upper cue-start bound">
+          <span>End (s)</span>
+          <input
+            type="number"
+            min="0"
+            step="0.1"
+            value={settings.t1 ?? ''}
+            placeholder={duration ? duration.toFixed(1) : 'auto'}
+            disabled={disabled}
+            onChange={(event) =>
+              applyCustom({
+                t1: event.currentTarget.value === '' ? null : Math.max(0, Number(event.currentTarget.value) || 0)
+              })
+            }
+          />
+        </label>
+      </div>
+
+      <button type="button" className="reset-score" onClick={onResetScore} disabled={disabled} title="Reset this session score to zero">
+        Reset score
+      </button>
+
+      <p className="shortcut-hint">Keys: 1-8 choose, Space/R replay, Enter reveal, M mute.</p>
     </aside>
   );
 }

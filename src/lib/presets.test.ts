@@ -22,6 +22,6 @@ describe('presets', () => {
     expect(defaultSettings.galleryPlayback).toBe('sequence');
     expect(defaultSettings.galleryDelay).toBe(2);
     expect(defaultSettings.minForwardGap).toBe(1);
-    expect(defaultSettings.maxForwardGap).toBe(2);
+    expect(defaultSettings.maxForwardGap).toBe(50);
   });
 });

@@ -1,4 +1,5 @@
 import type { AnchorStats, Annotation, Mode, Settings } from '../types';
+import { MAX_FORWARD_GAP_SECONDS } from './clipMath';
 
 const prefix = 'autoxvision:v1';
 
@@ -23,8 +24,11 @@ export function loadSettings(defaults: Settings): Settings {
   if (loaded.galleryDelay === 1 && loaded.galleryPlayback === 'sequence') {
     merged.galleryDelay = defaults.galleryDelay;
   }
-  merged.minForwardGap = Math.min(10, Math.max(0, merged.minForwardGap));
-  merged.maxForwardGap = Math.min(10, Math.max(merged.minForwardGap, merged.maxForwardGap));
+  if (loaded.minForwardGap === 1 && loaded.maxForwardGap === 2) {
+    merged.maxForwardGap = defaults.maxForwardGap;
+  }
+  merged.minForwardGap = Math.min(MAX_FORWARD_GAP_SECONDS, Math.max(0, merged.minForwardGap));
+  merged.maxForwardGap = Math.min(MAX_FORWARD_GAP_SECONDS, Math.max(merged.minForwardGap, merged.maxForwardGap));
   if (merged.preset === 'saved' && !loadSavedPreset()) {
     merged.preset = 'custom';
   }

@@ -1,4 +1,4 @@
-import { EPS, anchorTime, clampT1, clip, roundTime } from './clipMath';
+import { EPS, anchorTime, clampT1, clip, isVideoLongEnough, maxForwardGapLimit, roundTime } from './clipMath';
 import type { AnchorStats, GalleryItem, Mode, Settings, Trial } from '../types';
 
 type Random = () => number;
@@ -19,8 +19,9 @@ export function createTrial({
   random = Math.random
 }: TrialContext): Trial {
   const t0 = Math.max(0, settings.t0);
-  const forwardGap = normalizeForwardGapRange(settings);
-  const t1 = clampT1(duration, settings.T, t0, settings.t1, forwardGap.max);
+  const forwardGap = normalizeForwardGapRange(settings, duration);
+  const cueClampGap = isVideoLongEnough(duration, settings.T, forwardGap.max) ? forwardGap.max : forwardGap.min;
+  const t1 = clampT1(duration, settings.T, t0, settings.t1, cueClampGap);
   const cueStart = pickCueStart(settings.mode, t0, t1, settings.T, forwardGap.min, stats, previousCueStart, random);
   const cue = clip(cueStart, settings.T);
   const gallery = createContinuationGallery({
@@ -73,9 +74,10 @@ function pickCueStart(
   return sampleUniform(t0, t1, random);
 }
 
-function normalizeForwardGapRange(settings: Settings): { min: number; max: number } {
-  const min = Math.min(10, Math.max(0, settings.minForwardGap));
-  const visibleMax = Math.min(10, Math.max(min, settings.maxForwardGap));
+function normalizeForwardGapRange(settings: Settings, duration: number): { min: number; max: number } {
+  const limit = maxForwardGapLimit(duration, settings.T);
+  const min = Math.min(limit, Math.max(0, settings.minForwardGap));
+  const visibleMax = Math.min(limit, Math.max(min, settings.maxForwardGap));
   const effectiveMin = Math.max(EPS, min);
   return {
     min: effectiveMin,
@@ -140,22 +142,7 @@ function createContinuationGallery({
 }): GalleryItem[] {
   const lowerStart = cueEnd + minGap;
   const upperStart = Math.max(lowerStart, Math.min(cueEnd + maxGap, duration - T));
-  const starts: number[] = [];
-  const maxAttempts = Math.max(80, count * 60);
-  const guard = Math.min(0.35, Math.max(0.05, (upperStart - lowerStart) / Math.max(2, count * 2)));
-  let attempts = 0;
-
-  while (starts.length < count && attempts < maxAttempts) {
-    attempts += 1;
-    const start = sampleUniform(lowerStart, upperStart, random);
-    if (starts.every((existing) => Math.abs(existing - start) >= guard)) {
-      starts.push(start);
-    }
-  }
-
-  while (starts.length < count) {
-    starts.push(sampleUniform(lowerStart, upperStart, random));
-  }
+  const starts = sampleSpreadStarts(lowerStart, upperStart, count, random);
 
   const correctIndex = starts.reduce((bestIndex, start, index) => (start < starts[bestIndex] ? index : bestIndex), 0);
   const items = starts.map((start, index) => ({
@@ -165,6 +152,35 @@ function createContinuationGallery({
   }));
 
   return shuffle(items, random);
+}
+
+function sampleSpreadStarts(lowerStart: number, upperStart: number, count: number, random: Random): number[] {
+  if (count <= 0) {
+    return [];
+  }
+  if (upperStart <= lowerStart) {
+    return Array.from({ length: count }, () => roundTime(lowerStart));
+  }
+
+  const span = upperStart - lowerStart;
+  const minLapse = span / (2 * count);
+  const starts: number[] = [];
+  const maxAttempts = Math.max(120, count * 80);
+  let attempts = 0;
+
+  while (starts.length < count && attempts < maxAttempts) {
+    attempts += 1;
+    const candidate = sampleUniform(lowerStart, upperStart, random);
+    if (starts.every((start) => Math.abs(start - candidate) + EPS >= minLapse)) {
+      starts.push(candidate);
+    }
+  }
+
+  if (starts.length === count) {
+    return starts;
+  }
+
+  return Array.from({ length: count }, (_, index) => roundTime(lowerStart + (span * (index + 0.5)) / count));
 }
 
 export function shuffle<T>(items: T[], random: Random = Math.random): T[] {

@@ -5,7 +5,7 @@ import { Gallery } from './components/Gallery';
 import { NotesBox } from './components/NotesBox';
 import { ScoreBadge } from './components/ScoreBadge';
 import { StatusLine } from './components/StatusLine';
-import { isVideoLongEnough } from './lib/clipMath';
+import { isVideoLongEnough, maxForwardGapLimit } from './lib/clipMath';
 import { applyPreset, defaultSettings, markCustom } from './lib/presets';
 import {
   loadAnnotations,
@@ -80,15 +80,50 @@ function App() {
   const reactionStartRef = useRef<number>(0);
   const timeoutRef = useRef<number | null>(null);
   const statsRef = useRef<Record<string, AnchorStats>>({});
+  const forwardGapLimit = maxForwardGapLimit(video.duration, settings.T);
+  const effectiveMinForwardGap = Math.min(settings.minForwardGap, forwardGapLimit);
+  const effectiveMaxForwardGap = Math.min(Math.max(settings.maxForwardGap, effectiveMinForwardGap), forwardGapLimit);
+  const effectiveTrialSettings = useMemo<Settings>(
+    () => ({
+      ...settings,
+      minForwardGap: effectiveMinForwardGap,
+      maxForwardGap: effectiveMaxForwardGap
+    }),
+    [effectiveMaxForwardGap, effectiveMinForwardGap, settings]
+  );
 
   const canRunTrial = Boolean(
-    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, settings.maxForwardGap) && !video.error
+    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, effectiveMinForwardGap) && !video.error
   );
   const currentClip = phase === 'revealing' ? trial?.answer ?? null : trial?.cue ?? null;
 
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (video.duration === null) {
+      return;
+    }
+    const limit = maxForwardGapLimit(video.duration, settings.T);
+    const minForwardGap = Math.min(settings.minForwardGap, limit);
+    const maxForwardGap = Math.min(Math.max(settings.maxForwardGap, minForwardGap), limit);
+    if (minForwardGap !== settings.minForwardGap || maxForwardGap !== settings.maxForwardGap) {
+      setSettings((previous) => ({
+        ...previous,
+        minForwardGap,
+        maxForwardGap
+      }));
+    }
+  }, [settings.T, settings.maxForwardGap, settings.minForwardGap, video.duration]);
+
+  useEffect(() => {
+    if (settings.mode === 'mentalLap') {
+      setGalleryCollapsed(true);
+      setControlsCollapsed(true);
+      setNotesCollapsed(true);
+    }
+  }, [settings.mode]);
 
   useEffect(() => {
     if (!video.fingerprint) {
@@ -161,7 +196,7 @@ function App() {
       }
       const nextTrial = createTrial({
         duration: video.duration,
-        settings,
+        settings: effectiveTrialSettings,
         stats: statsRef.current,
         previousCueStart
       });
@@ -176,17 +211,17 @@ function App() {
         setPhase('cuePlaying');
       }, cueDelayMs);
     },
-    [canRunTrial, settings, video.duration]
+    [canRunTrial, effectiveTrialSettings, video.duration]
   );
 
   useEffect(() => {
     if (!video.url || video.duration === null || video.error) {
       return;
     }
-    if (!isVideoLongEnough(video.duration, settings.T, settings.maxForwardGap)) {
+    if (!isVideoLongEnough(video.duration, settings.T, effectiveMinForwardGap)) {
       setTrial(null);
       setPhase('idle');
-      setStatus({ message: 'Video is too short for the current prompt length and forward-gap range.', tone: 'warn' });
+      setStatus({ message: 'Video is too short for the current prompt length and minimum forward gap.', tone: 'warn' });
       return;
     }
     beginTrial(null);
@@ -194,7 +229,7 @@ function App() {
     beginTrial,
     settings.T,
     settings.N,
-    settings.maxForwardGap,
+    effectiveMinForwardGap,
     settings.minForwardGap,
     settings.mode,
     settings.t0,
@@ -296,12 +331,16 @@ function App() {
   };
 
   const handleReplay = () => {
-    if (!trial || !settings.replayEnabled || phase !== 'answering') {
+    if (!trial || !settings.replayEnabled || phase === 'idle' || phase === 'cueDelay' || phase === 'cuePlaying') {
       return;
+    }
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
     }
     setGallerySequenceIndex(null);
     setChoicesReady(false);
     setPhase('cueDelay');
+    setStatus({ message: '', tone: 'neutral' });
     timeoutRef.current = window.setTimeout(() => setPhase('cuePlaying'), cueDelayMs);
   };
 
@@ -378,11 +417,11 @@ function App() {
       }
       if (event.key === ' ' || event.key.toLowerCase() === 'r') {
         event.preventDefault();
-        if (settings.mode === 'mentalLap' && phase === 'answering') {
-          revealAnswer();
-        } else {
-          handleReplay();
-        }
+        handleReplay();
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        revealAnswer();
       }
       if (event.key.toLowerCase() === 'm') {
         setSettings((previous) => markCustom(previous, { soundEnabled: !previous.soundEnabled }));
@@ -390,7 +429,7 @@ function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleSelect, phase, revealAnswer, settings.mode, trial]);
+  }, [handleSelect, handleReplay, revealAnswer, trial]);
 
   useEffect(() => {
     if (phase !== 'answering' || !trial || trial.gallery.length === 0) {
@@ -407,6 +446,11 @@ function App() {
 
     const runSequence = async () => {
       setChoicesReady(false);
+      if (settings.mode === 'mentalLap') {
+        reactionStartRef.current = performance.now();
+        setChoicesReady(true);
+        return;
+      }
       await wait(settings.galleryDelay * 1000);
       if (!active) {
         return;
@@ -447,7 +491,7 @@ function App() {
     return () => {
       active = false;
     };
-  }, [phase, settings.T, settings.galleryDelay, settings.galleryPlayback, settings.replayEnabled, trial]);
+  }, [phase, settings.T, settings.galleryDelay, settings.galleryPlayback, settings.mode, settings.replayEnabled, trial]);
 
   const resetScore = () => {
     setScore(0);
@@ -514,7 +558,9 @@ function App() {
 
   return (
     <main
-      className={`app-shell${controlsCollapsed ? ' controls-collapsed' : ''}${notesCollapsed ? ' notes-collapsed' : ''}${
+      className={`app-shell${galleryHidden ? ' mental-mode' : ''}${controlsCollapsed ? ' controls-collapsed' : ''}${
+        notesCollapsed ? ' notes-collapsed' : ''
+      }${
         effectiveGalleryCollapsed ? ' gallery-collapsed' : ''
       }`}
       style={{ '--lower-height': `${lowerHeight}px` } as React.CSSProperties}
@@ -587,6 +633,7 @@ function App() {
         <ControlPanel
           settings={settings}
           duration={video.duration}
+          maxForwardGapLimit={forwardGapLimit}
           disabled={panelDisabled}
           collapsed={controlsCollapsed}
           onFileChange={handleFileChange}

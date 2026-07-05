@@ -34,6 +34,25 @@ describe('trialEngine', () => {
     expect(trial.answer.end - trial.answer.start).toBeCloseTo(1);
   });
 
+  it('keeps sampled gallery starts separated by the configured lapse formula', () => {
+    let i = 0;
+    const values = [0, 0.03, 0.06, 0.1, 0.2, 0.35, 0.52, 0.78, 0.95, 0.4, 0.6];
+    const minForwardGap = 1;
+    const maxForwardGap = 9;
+    const count = 4;
+    const minLapse = (maxForwardGap - minForwardGap) / (2 * count);
+    const trial = createTrial({
+      duration: 30,
+      settings: { ...defaultSettings, T: 1, N: count, minForwardGap, maxForwardGap },
+      random: () => values[i++ % values.length]
+    });
+
+    const starts = trial.gallery.map((item) => item.clip.start).sort((a, b) => a - b);
+    for (let index = 1; index < starts.length; index += 1) {
+      expect(starts[index] - starts[index - 1]).toBeGreaterThanOrEqual(minLapse - 0.001);
+    }
+  });
+
   it('keeps every gallery option after the prompt when the visible min gap is zero', () => {
     let i = 0;
     const values = [0.1, 0, 0.2, 0.5, 0.9];
@@ -46,6 +65,22 @@ describe('trialEngine', () => {
     expect(trial.gallery).toHaveLength(3);
     for (const item of trial.gallery) {
       expect(item.clip.start).toBeGreaterThan(trial.cue.end);
+    }
+  });
+
+  it('allows long forward windows beyond the old ten-second limit', () => {
+    let i = 0;
+    const values = [0, 0.9, 0.7, 0.8, 0.6, 0.4];
+    const trial = createTrial({
+      duration: 80,
+      settings: { ...defaultSettings, T: 1, N: 3, minForwardGap: 20, maxForwardGap: 30 },
+      random: () => values[i++ % values.length]
+    });
+
+    for (const item of trial.gallery) {
+      const gap = item.clip.start - trial.cue.end;
+      expect(gap).toBeGreaterThanOrEqual(19.999);
+      expect(gap).toBeLessThanOrEqual(30.001);
     }
   });
 

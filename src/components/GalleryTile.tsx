@@ -77,6 +77,7 @@ export function GalleryTile({
       data-gallery-index={index}
       data-correct={item.isCorrect ? 'true' : 'false'}
       data-clip-start={item.clip.start.toFixed(3)}
+      title={`Choose continuation ${index + 1}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}

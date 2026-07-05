@@ -84,6 +84,11 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Status: Complete.
 - Notes: Replaced the single forward gap with Min gap and Max gap sliders, both 0-10s, and raised the prompt-duration slider max to 20s. All modes now generate continuations strictly after prompt end; multi-choice modes sample each continuation start from the configured source-time forward window and mark the earliest sampled future clip correct. Added a collapsible mental-lap gallery rail, moved Replay prompt / Show answer into a smaller vertical stack to the right of the prompt video, tightened vertical spacing, and made wrong/correct feedback frames override hover with thicker red/green treatment.
 
+### Slice 12 — Inline controls and wider continuation spacing
+
+- Status: Complete.
+- Notes: Kept a snapshot server running for the prior committed build, then flattened Advanced controls into the main control panel with hover titles on primary buttons. Raised the default Max gap to 50s, capped it per video at the smaller of 180s or video duration minus gallery clip duration, migrated old default-shaped 1s/2s saved gaps to 1s/50s, and enforced a minimum lapse between sampled gallery starts based on the active continuation window. Mental-lap mode now auto-collapses secondary panels, leaves the prompt as the main surface, plays the prompt once per trial, and uses Space/R for replay plus Enter/Show answer for reveal.
+
 ## Verification log
 
 Commands run:
@@ -194,6 +199,23 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev -- --host 127.0.0.1
 # Result: Vite ready at http://127.0.0.1:5173/ and left running after handoff.
+
+# Inline controls / wider continuation spacing revision:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 18 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev -- --host 127.0.0.1
+# Result: Vite ready at http://127.0.0.1:5173/ and left running after handoff.
 ```
 
 Visual inspection:
@@ -214,6 +236,8 @@ Visual inspection:
 - Forward-window screenshots: `/tmp/autoxvision-forward-window-shots/01-loaded.png` through `/tmp/autoxvision-forward-window-shots/04-mental-collapsed.png`.
 - Forward-window checks: Verified prompt duration slider max 20s; Min gap and Max gap sliders exist under Advanced with max 10s and defaults 1s/2s; Replay prompt is enabled after video load; prompt actions are right of the prompt and vertically stacked; M hotkey toggles sound; all gallery starts were after prompt end and inside the default 1-2s forward window; the correct answer was the earliest sampled future clip; wrong/correct frames remained thick while hovered; mental-lap gallery collapsed to a narrow rail; and no horizontal overflow appeared at 1440x900.
 - Hotkey follow-up checks: Verified number-key answer selection, `R` replay, and `Space` reveal in mental-lap mode at 1280x720.
+- Inline-control screenshots: `/tmp/autoxvision-inline-controls-shots/01-inline-controls.png` and `/tmp/autoxvision-inline-controls-shots/02-mental-lap-focused.png`.
+- Inline-control checks: Verified Advanced is gone; Max gap defaults to 50s before file load with a 180s slider cap; short test video clamps Max gap to video duration minus prompt duration; gallery starts remain after prompt end, inside the effective forward window, and separated by the computed minimum lapse; gallery instruction overlays inside the gallery strip; prompt-gallery vertical gap is compact; Space and the Replay button replay the prompt; mental-lap auto-collapses controls, notes, and gallery into a compact rail; mental-lap does not automatically replay after waiting; and Enter reveals the answer after mental replay.
 
 ## Remaining limitations
 
