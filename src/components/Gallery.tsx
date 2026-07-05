@@ -10,6 +10,7 @@ type GalleryProps = {
   instruction: string;
   disabled: boolean;
   hidden: boolean;
+  collapsed: boolean;
   wrongIds: Set<string>;
   revealCorrect: boolean;
   misses: Array<{
@@ -19,6 +20,7 @@ type GalleryProps = {
     active: boolean;
   }>;
   onRetryMiss: (id: string) => void;
+  onToggleCollapsed: () => void;
   onSelect: (id: string) => void;
 };
 
@@ -30,20 +32,47 @@ export function Gallery({
   instruction,
   disabled,
   hidden,
+  collapsed,
   wrongIds,
   revealCorrect,
   misses,
   onRetryMiss,
+  onToggleCollapsed,
   onSelect
 }: GalleryProps) {
   const choiceColumns = items.length > 4 ? Math.ceil(items.length / 2) : Math.max(1, items.length);
 
+  if (hidden && collapsed) {
+    return (
+      <section className="choices choices-collapsed" aria-label="Mental lap choices">
+        <button
+          type="button"
+          className="collapse-tab"
+          onClick={onToggleCollapsed}
+          title="Expand mental lap panel"
+          aria-label="Expand mental lap panel"
+        >
+          Mental lap
+        </button>
+      </section>
+    );
+  }
+
   if (hidden) {
     return (
-      <section className="choices choices-empty" aria-label="Answer choices">
+      <section className="choices choices-empty choices-mental" aria-label="Answer choices">
+        <button
+          type="button"
+          className="panel-collapse-button choices-collapse-button"
+          onClick={onToggleCollapsed}
+          title="Collapse mental lap panel"
+          aria-label="Collapse mental lap panel"
+        >
+          Collapse
+        </button>
         <div>
           <strong>Mental lap</strong>
-          <span>Choices hidden. Press Space or Show answer when your mental continuation is ready.</span>
+          <span>Run the continuation mentally, then press Space or Show answer.</span>
         </div>
       </section>
     );

@@ -7,7 +7,8 @@ export const defaultSettings: Settings = {
   preset: 'custom',
   galleryPlayback: 'sequence',
   galleryDelay: 2,
-  answerGap: 1,
+  minForwardGap: 1,
+  maxForwardGap: 2,
   replayEnabled: true,
   soundEnabled: true,
   t0: 0,
@@ -17,10 +18,10 @@ export const defaultSettings: Settings = {
 export type BuiltInPreset = Exclude<Preset, 'custom' | 'saved'>;
 
 export const presetSettings: Record<BuiltInPreset, Partial<Settings>> = {
-  encoding: { T: 2.5, N: 2, replayEnabled: true, galleryPlayback: 'sequence', galleryDelay: 2, answerGap: 1 },
-  learning: { T: 2, N: 3, replayEnabled: true, galleryPlayback: 'sequence', galleryDelay: 1.5, answerGap: 1 },
-  performance: { T: 1.25, N: 4, replayEnabled: false, galleryPlayback: 'hover', galleryDelay: 1, answerGap: 1 },
-  pressure: { T: 0.75, N: 6, replayEnabled: false, galleryPlayback: 'hover', galleryDelay: 0.5, answerGap: 0.75 }
+  encoding: { T: 2.5, N: 2, replayEnabled: true, galleryPlayback: 'sequence', galleryDelay: 2, minForwardGap: 1, maxForwardGap: 2 },
+  learning: { T: 2, N: 3, replayEnabled: true, galleryPlayback: 'sequence', galleryDelay: 1.5, minForwardGap: 1, maxForwardGap: 2 },
+  performance: { T: 1.25, N: 4, replayEnabled: false, galleryPlayback: 'hover', galleryDelay: 1, minForwardGap: 1, maxForwardGap: 3 },
+  pressure: { T: 0.75, N: 6, replayEnabled: false, galleryPlayback: 'hover', galleryDelay: 0.5, minForwardGap: 0.75, maxForwardGap: 2 }
 };
 
 export function applyPreset(settings: Settings, preset: BuiltInPreset | 'custom'): Settings {
@@ -49,7 +50,8 @@ export function savedPresetPayload(settings: Settings): Partial<Settings> {
     mode: settings.mode,
     galleryPlayback: settings.galleryPlayback,
     galleryDelay: settings.galleryDelay,
-    answerGap: settings.answerGap,
+    minForwardGap: settings.minForwardGap,
+    maxForwardGap: settings.maxForwardGap,
     replayEnabled: settings.replayEnabled,
     soundEnabled: settings.soundEnabled,
     t0: settings.t0,

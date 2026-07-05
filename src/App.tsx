@@ -70,6 +70,7 @@ function App() {
   const [choicesReady, setChoicesReady] = useState(false);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
   const [notesCollapsed, setNotesCollapsed] = useState(false);
+  const [galleryCollapsed, setGalleryCollapsed] = useState(false);
   const [status, setStatus] = useState<{ message: string; tone: 'neutral' | 'good' | 'bad' | 'warn' }>({
     message: 'Choose a local course-walk video to begin.',
     tone: 'neutral'
@@ -81,7 +82,7 @@ function App() {
   const statsRef = useRef<Record<string, AnchorStats>>({});
 
   const canRunTrial = Boolean(
-    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, settings.answerGap) && !video.error
+    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, settings.maxForwardGap) && !video.error
   );
   const currentClip = phase === 'revealing' ? trial?.answer ?? null : trial?.cue ?? null;
 
@@ -182,14 +183,26 @@ function App() {
     if (!video.url || video.duration === null || video.error) {
       return;
     }
-    if (!isVideoLongEnough(video.duration, settings.T, settings.answerGap)) {
+    if (!isVideoLongEnough(video.duration, settings.T, settings.maxForwardGap)) {
       setTrial(null);
       setPhase('idle');
-      setStatus({ message: 'Video is too short for the current prompt length and forward gap.', tone: 'warn' });
+      setStatus({ message: 'Video is too short for the current prompt length and forward-gap range.', tone: 'warn' });
       return;
     }
     beginTrial(null);
-  }, [beginTrial, settings.T, settings.N, settings.answerGap, settings.mode, settings.t0, settings.t1, video.duration, video.error, video.url]);
+  }, [
+    beginTrial,
+    settings.T,
+    settings.N,
+    settings.maxForwardGap,
+    settings.minForwardGap,
+    settings.mode,
+    settings.t0,
+    settings.t1,
+    video.duration,
+    video.error,
+    video.url
+  ]);
 
   const handleFileChange = (file: File | null) => {
     if (!file) {
@@ -475,6 +488,7 @@ function App() {
   const cueStart = trial?.cueStart ?? null;
   const panelDisabled = !video.url || video.duration === null || Boolean(video.error);
   const galleryHidden = settings.mode === 'mentalLap';
+  const effectiveGalleryCollapsed = galleryHidden && galleryCollapsed;
 
   const galleryInstruction = useMemo(() => {
     if (!trial) {
@@ -500,7 +514,9 @@ function App() {
 
   return (
     <main
-      className={`app-shell${controlsCollapsed ? ' controls-collapsed' : ''}${notesCollapsed ? ' notes-collapsed' : ''}`}
+      className={`app-shell${controlsCollapsed ? ' controls-collapsed' : ''}${notesCollapsed ? ' notes-collapsed' : ''}${
+        effectiveGalleryCollapsed ? ' gallery-collapsed' : ''
+      }`}
       style={{ '--lower-height': `${lowerHeight}px` } as React.CSSProperties}
     >
       <div className="metadata-loader" aria-hidden="true">
@@ -555,6 +571,7 @@ function App() {
           instruction={galleryInstruction}
           disabled={phase !== 'answering' || !choicesReady}
           hidden={galleryHidden}
+          collapsed={effectiveGalleryCollapsed}
           wrongIds={wrongIds}
           revealCorrect={phase === 'revealing'}
           misses={missHistory.map((miss) => ({
@@ -564,6 +581,7 @@ function App() {
             active: miss.id === activeMissId
           }))}
           onRetryMiss={retryMiss}
+          onToggleCollapsed={() => setGalleryCollapsed((previous) => !previous)}
           onSelect={handleSelect}
         />
         <ControlPanel

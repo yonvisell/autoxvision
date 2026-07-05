@@ -3,21 +3,28 @@ import type { AnchorStats, Annotation, Mode, Settings } from '../types';
 const prefix = 'autoxvision:v1';
 
 export function loadSettings(defaults: Settings): Settings {
-  const loaded = read<Partial<Settings>>(`${prefix}:settings`, {});
-  const merged = { ...defaults, ...loaded };
+  const loaded = read<Partial<Settings> & { answerGap?: number }>(`${prefix}:settings`, {});
+  const migrated = { ...loaded };
+  if (!Number.isFinite(migrated.minForwardGap)) {
+    migrated.minForwardGap = Number.isFinite(loaded.answerGap) ? Math.max(0, loaded.answerGap as number) : defaults.minForwardGap;
+  }
+  const minForwardGap = migrated.minForwardGap ?? defaults.minForwardGap;
+  if (!Number.isFinite(migrated.maxForwardGap)) {
+    migrated.maxForwardGap = Math.max(minForwardGap, defaults.maxForwardGap);
+  }
+  const merged = { ...defaults, ...migrated };
   if ((merged.galleryPlayback as string) === 'loop') {
     merged.galleryPlayback = 'allLoop';
   }
   if (!Number.isFinite(merged.galleryDelay)) {
     merged.galleryDelay = defaults.galleryDelay;
   }
-  if (!Number.isFinite(merged.answerGap)) {
-    merged.answerGap = defaults.answerGap;
-  }
   // Previous sequence-mode default was 1s; move saved default-shaped sessions to the calmer current wait.
   if (loaded.galleryDelay === 1 && loaded.galleryPlayback === 'sequence') {
     merged.galleryDelay = defaults.galleryDelay;
   }
+  merged.minForwardGap = Math.min(10, Math.max(0, merged.minForwardGap));
+  merged.maxForwardGap = Math.min(10, Math.max(merged.minForwardGap, merged.maxForwardGap));
   if (merged.preset === 'saved' && !loadSavedPreset()) {
     merged.preset = 'custom';
   }

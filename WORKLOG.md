@@ -79,6 +79,11 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Status: Complete.
 - Notes: Added a source-time Forward gap setting, default 1.00s, so the correct answer clip starts after the prompt end plus a configurable gap. Added the slider under Advanced, included the gap in duration clamping and sequential stepping, and added horizontal collapse rails for the right control panel and notes panel so the gallery and prompt can expand.
 
+### Slice 11 — Forward-window sampling and compact prompt controls
+
+- Status: Complete.
+- Notes: Replaced the single forward gap with Min gap and Max gap sliders, both 0-10s, and raised the prompt-duration slider max to 20s. All modes now generate continuations strictly after prompt end; multi-choice modes sample each continuation start from the configured source-time forward window and mark the earliest sampled future clip correct. Added a collapsible mental-lap gallery rail, moved Replay prompt / Show answer into a smaller vertical stack to the right of the prompt video, tightened vertical spacing, and made wrong/correct feedback frames override hover with thicker red/green treatment.
+
 ## Verification log
 
 Commands run:
@@ -172,6 +177,23 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev
 # Result: Vite ready at http://127.0.0.1:5173/ and left running after handoff.
+
+# Forward-window sampling / compact prompt controls revision:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 15 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev -- --host 127.0.0.1
+# Result: Vite ready at http://127.0.0.1:5173/ and left running after handoff.
 ```
 
 Visual inspection:
@@ -189,6 +211,9 @@ Visual inspection:
 - Right-controls revision checks: Verified control panel right of choices, Preset and Session mode visible outside Advanced, Advanced closed and not containing those controls, Replay prompt not disabled after video load, prompt max is 5, no horizontal overflow, and no listeners remain on ports 5173/5174 after validation.
 - Forward gap / collapse screenshots: `/tmp/autoxvision-gap-collapse-shots/01-loaded.png` through `/tmp/autoxvision-gap-collapse-shots/04-notes-collapsed.png`.
 - Forward gap / collapse checks: Verified Forward gap slider appears under Advanced at 1.00s default, correct answer clip starts at least 1s after prompt end, prompt max remains 5, collapsing controls enlarges gallery, expanding controls restores the panel, collapsing notes enlarges prompt, expanding notes restores the notes panel, and no horizontal overflow.
+- Forward-window screenshots: `/tmp/autoxvision-forward-window-shots/01-loaded.png` through `/tmp/autoxvision-forward-window-shots/04-mental-collapsed.png`.
+- Forward-window checks: Verified prompt duration slider max 20s; Min gap and Max gap sliders exist under Advanced with max 10s and defaults 1s/2s; Replay prompt is enabled after video load; prompt actions are right of the prompt and vertically stacked; M hotkey toggles sound; all gallery starts were after prompt end and inside the default 1-2s forward window; the correct answer was the earliest sampled future clip; wrong/correct frames remained thick while hovered; mental-lap gallery collapsed to a narrow rail; and no horizontal overflow appeared at 1440x900.
+- Hotkey follow-up checks: Verified number-key answer selection, `R` replay, and `Space` reveal in mental-lap mode at 1280x720.
 
 ## Remaining limitations
 

@@ -26,6 +26,20 @@ export function ControlPanel({
   onToggleCollapsed
 }: ControlPanelProps) {
   const applyCustom = (patch: Partial<Settings>) => onSettingsChange(patch);
+  const setMinForwardGap = (value: number) => {
+    const minForwardGap = Math.min(10, Math.max(0, value));
+    applyCustom({
+      minForwardGap,
+      maxForwardGap: Math.max(settings.maxForwardGap, minForwardGap)
+    });
+  };
+  const setMaxForwardGap = (value: number) => {
+    const maxForwardGap = Math.min(10, Math.max(0, value));
+    applyCustom({
+      minForwardGap: Math.min(settings.minForwardGap, maxForwardGap),
+      maxForwardGap
+    });
+  };
 
   if (collapsed) {
     return (
@@ -58,7 +72,7 @@ export function ControlPanel({
           <input
             type="range"
             min="0.25"
-            max="5"
+            max="20"
             step="0.05"
             value={settings.T}
             disabled={disabled}
@@ -171,18 +185,33 @@ export function ControlPanel({
           </div>
 
           <div className="range-row">
-            <label title="Minimum source-time gap between prompt end and the correct answer clip">
-              <span>Forward gap <strong>{settings.answerGap.toFixed(2)}s</strong></span>
+            <label title="Earliest source-time gap between prompt end and continuation starts">
+              <span>Min gap <strong>{settings.minForwardGap.toFixed(2)}s</strong></span>
               <input
                 type="range"
                 min="0"
-                max="3"
+                max="10"
                 step="0.25"
-                value={settings.answerGap}
+                value={settings.minForwardGap}
                 disabled={disabled}
-                onChange={(event) => applyCustom({ answerGap: Number(event.currentTarget.value) })}
+                onChange={(event) => setMinForwardGap(Number(event.currentTarget.value))}
               />
             </label>
+            <label title="Latest source-time gap between prompt end and sampled continuation starts">
+              <span>Max gap <strong>{settings.maxForwardGap.toFixed(2)}s</strong></span>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.25"
+                value={settings.maxForwardGap}
+                disabled={disabled}
+                onChange={(event) => setMaxForwardGap(Number(event.currentTarget.value))}
+              />
+            </label>
+          </div>
+
+          <div className="range-row">
             <label title="Lower cue-start bound">
               <span>Start (s)</span>
               <input
@@ -194,9 +223,7 @@ export function ControlPanel({
                 onChange={(event) => applyCustom({ t0: Math.max(0, Number(event.currentTarget.value) || 0) })}
               />
             </label>
-          </div>
 
-          <div className="range-row">
             <label title="Optional upper cue-start bound">
               <span>End (s)</span>
               <input
@@ -213,7 +240,9 @@ export function ControlPanel({
                 }
               />
             </label>
+          </div>
 
+          <div className="range-row advanced-actions-row">
             <button type="button" className="reset-score" onClick={onResetScore} disabled={disabled}>
               Reset score
             </button>

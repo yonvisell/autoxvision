@@ -11,11 +11,11 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-export function maxCueStart(duration: number, T: number, t0 = 0, answerGap = 0): number {
+export function maxCueStart(duration: number, T: number, t0 = 0, maxForwardGap = 0): number {
   if (!Number.isFinite(duration) || duration <= 0) {
     return t0;
   }
-  return Math.max(t0, duration - 2 * T - Math.max(0, answerGap) - EPS);
+  return Math.max(t0, duration - 2 * T - Math.max(0, maxForwardGap) - EPS);
 }
 
 export function clampT1(
@@ -23,17 +23,17 @@ export function clampT1(
   T: number,
   t0: number,
   userT1: number | null | undefined,
-  answerGap = 0
+  maxForwardGap = 0
 ): number {
-  const upper = maxCueStart(duration, T, t0, answerGap);
+  const upper = maxCueStart(duration, T, t0, maxForwardGap);
   if (userT1 === null || userT1 === undefined || !Number.isFinite(userT1)) {
     return upper;
   }
   return clamp(userT1, t0, upper);
 }
 
-export function isVideoLongEnough(duration: number, T: number, answerGap = 0): boolean {
-  return Number.isFinite(duration) && duration >= 2 * T + Math.max(0, answerGap) + EPS;
+export function isVideoLongEnough(duration: number, T: number, maxForwardGap = 0): boolean {
+  return Number.isFinite(duration) && duration >= 2 * T + Math.max(0, maxForwardGap) + EPS;
 }
 
 export function clip(start: number, duration: number): Clip {

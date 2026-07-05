@@ -1,5 +1,5 @@
-import { anchorTime, clampT1, clip, clipsOverlap, roundTime } from './clipMath';
-import type { AnchorStats, Clip, GalleryItem, Mode, Settings, Trial } from '../types';
+import { EPS, anchorTime, clampT1, clip, roundTime } from './clipMath';
+import type { AnchorStats, GalleryItem, Mode, Settings, Trial } from '../types';
 
 type Random = () => number;
 
@@ -19,17 +19,20 @@ export function createTrial({
   random = Math.random
 }: TrialContext): Trial {
   const t0 = Math.max(0, settings.t0);
-  const answerGap = Math.max(0, settings.answerGap);
-  const t1 = clampT1(duration, settings.T, t0, settings.t1, answerGap);
-  const cueStart = pickCueStart(settings.mode, t0, t1, settings.T, answerGap, stats, previousCueStart, random);
+  const forwardGap = normalizeForwardGapRange(settings);
+  const t1 = clampT1(duration, settings.T, t0, settings.t1, forwardGap.max);
+  const cueStart = pickCueStart(settings.mode, t0, t1, settings.T, forwardGap.min, stats, previousCueStart, random);
   const cue = clip(cueStart, settings.T);
-  const answer = clip(cueStart + settings.T + answerGap, settings.T);
-  const correct: GalleryItem = {
-    id: `correct-${cueStart.toFixed(3)}-${Date.now()}`,
-    clip: answer,
-    isCorrect: true
-  };
-  const distractors = createDistractors(duration, settings.T, settings.N - 1, cue, answer, random);
+  const gallery = createContinuationGallery({
+    duration,
+    T: settings.T,
+    count: settings.mode === 'mentalLap' ? 1 : settings.N,
+    cueEnd: cue.end,
+    minGap: forwardGap.min,
+    maxGap: forwardGap.max,
+    random
+  });
+  const answer = gallery.find((item) => item.isCorrect)?.clip ?? gallery[0].clip;
 
   return {
     id: `trial-${cueStart.toFixed(3)}-${Date.now()}-${Math.floor(random() * 1_000_000)}`,
@@ -37,7 +40,7 @@ export function createTrial({
     answer,
     cueStart: roundTime(cueStart),
     createdAt: Date.now(),
-    gallery: shuffle([correct, ...distractors], random)
+    gallery
   };
 }
 
@@ -46,14 +49,14 @@ function pickCueStart(
   t0: number,
   t1: number,
   T: number,
-  answerGap: number,
+  minForwardGap: number,
   stats: Record<string, AnchorStats>,
   previousCueStart: number | null,
   random: Random
 ): number {
   if (mode === 'sequential' || mode === 'mentalLap') {
     if (previousCueStart !== null && Number.isFinite(previousCueStart)) {
-      const next = previousCueStart + T + answerGap;
+      const next = previousCueStart + T + minForwardGap;
       if (next <= t1) {
         return roundTime(next);
       }
@@ -68,6 +71,16 @@ function pickCueStart(
   }
 
   return sampleUniform(t0, t1, random);
+}
+
+function normalizeForwardGapRange(settings: Settings): { min: number; max: number } {
+  const min = Math.min(10, Math.max(0, settings.minForwardGap));
+  const visibleMax = Math.min(10, Math.max(min, settings.maxForwardGap));
+  const effectiveMin = Math.max(EPS, min);
+  return {
+    min: effectiveMin,
+    max: Math.max(effectiveMin, visibleMax)
+  };
 }
 
 function pickWeakSpot(
@@ -108,53 +121,50 @@ export function sampleUniform(t0: number, t1: number, random: Random = Math.rand
   return roundTime(t0 + random() * (t1 - t0));
 }
 
-export function createDistractors(
-  duration: number,
-  T: number,
-  count: number,
-  cue: Clip,
-  answer: Clip,
-  random: Random = Math.random
-): GalleryItem[] {
-  const maxStart = Math.max(0, duration - T);
-  const forbidden = [cue, answer];
-  let separation = Math.max(0.5, 2 * T);
-  const items: GalleryItem[] = [];
+function createContinuationGallery({
+  duration,
+  T,
+  count,
+  cueEnd,
+  minGap,
+  maxGap,
+  random
+}: {
+  duration: number;
+  T: number;
+  count: number;
+  cueEnd: number;
+  minGap: number;
+  maxGap: number;
+  random: Random;
+}): GalleryItem[] {
+  const lowerStart = cueEnd + minGap;
+  const upperStart = Math.max(lowerStart, Math.min(cueEnd + maxGap, duration - T));
+  const starts: number[] = [];
+  const maxAttempts = Math.max(80, count * 60);
+  const guard = Math.min(0.35, Math.max(0.05, (upperStart - lowerStart) / Math.max(2, count * 2)));
   let attempts = 0;
-  const maxAttempts = Math.max(120, count * 100);
 
-  while (items.length < count && attempts < maxAttempts) {
+  while (starts.length < count && attempts < maxAttempts) {
     attempts += 1;
-    if (attempts === Math.floor(maxAttempts * 0.55)) {
-      separation = Math.max(0.15, separation / 2);
-    }
-    if (attempts === Math.floor(maxAttempts * 0.82)) {
-      separation = 0;
-    }
-
-    const start = sampleUniform(0, maxStart, random);
-    const candidate = clip(start, T);
-    const tooNearRequired = forbidden.some((existing) => clipsOverlap(candidate, existing, separation));
-    const tooNearGallery = items.some((item) => clipsOverlap(candidate, item.clip, Math.max(0.05, separation / 2)));
-    if (!tooNearRequired && !tooNearGallery) {
-      items.push({
-        id: `distractor-${items.length}-${start.toFixed(3)}-${attempts}`,
-        clip: candidate,
-        isCorrect: false
-      });
+    const start = sampleUniform(lowerStart, upperStart, random);
+    if (starts.every((existing) => Math.abs(existing - start) >= guard)) {
+      starts.push(start);
     }
   }
 
-  while (items.length < count) {
-    const start = sampleUniform(0, maxStart, random);
-    items.push({
-      id: `fallback-${items.length}-${start.toFixed(3)}`,
-      clip: clip(start, T),
-      isCorrect: false
-    });
+  while (starts.length < count) {
+    starts.push(sampleUniform(lowerStart, upperStart, random));
   }
 
-  return items;
+  const correctIndex = starts.reduce((bestIndex, start, index) => (start < starts[bestIndex] ? index : bestIndex), 0);
+  const items = starts.map((start, index) => ({
+    id: `${index === correctIndex ? 'correct' : 'future'}-${index}-${start.toFixed(3)}-${Date.now()}`,
+    clip: clip(start, T),
+    isCorrect: index === correctIndex
+  }));
+
+  return shuffle(items, random);
 }
 
 export function shuffle<T>(items: T[], random: Random = Math.random): T[] {
