@@ -75,7 +75,7 @@ export function ControlPanel({
           <input
             type="range"
             min="0.25"
-            max="20"
+            max="26"
             step="0.05"
             value={settings.T}
             disabled={disabled}
@@ -101,11 +101,24 @@ export function ControlPanel({
           <input
             type="range"
             min="0"
-            max="3"
+            max="4"
             step="0.25"
             value={settings.galleryDelay}
             disabled={disabled}
             onChange={(event) => applyCustom({ galleryDelay: Number(event.currentTarget.value) })}
+          />
+        </label>
+
+        <label title="Playback speed for prompt and continuation clips">
+          <span>Speed <strong>{settings.playbackRate.toFixed(2)}x</strong></span>
+          <input
+            type="range"
+            min="0.25"
+            max="10"
+            step="0.25"
+            value={settings.playbackRate}
+            disabled={disabled}
+            onChange={(event) => applyCustom({ playbackRate: Number(event.currentTarget.value) })}
           />
         </label>
       </div>
@@ -212,7 +225,7 @@ export function ControlPanel({
             onChange={(event) => setMinForwardGap(Number(event.currentTarget.value))}
           />
         </label>
-        <label title={`Latest source-time gap. Capped at the smaller of 180s or video end minus clip length (${forwardGapMax.toFixed(2)}s now).`}>
+        <label title={`Latest source-time gap. Capped at the smaller of 234s or video end minus clip length (${forwardGapMax.toFixed(2)}s now).`}>
           <span>Max gap <strong>{settings.maxForwardGap.toFixed(2)}s</strong></span>
           <input
             type="range"

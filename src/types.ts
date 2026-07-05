@@ -41,6 +41,7 @@ export type Settings = {
   galleryDelay: number;
   minForwardGap: number;
   maxForwardGap: number;
+  playbackRate: number;
   replayEnabled: boolean;
   soundEnabled: boolean;
   t0: number;

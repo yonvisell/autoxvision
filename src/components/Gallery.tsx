@@ -7,6 +7,7 @@ type GalleryProps = {
   items: GalleryItem[];
   playback: GalleryPlayback;
   activeSequenceIndex: number | null;
+  playbackRate: number;
   instruction: string;
   disabled: boolean;
   hidden: boolean;
@@ -29,6 +30,7 @@ export function Gallery({
   items,
   playback,
   activeSequenceIndex,
+  playbackRate,
   instruction,
   disabled,
   hidden,
@@ -120,6 +122,7 @@ export function Gallery({
             videoUrl={videoUrl}
             playback={playback}
             isSequenceActive={playback !== 'sequence' || activeSequenceIndex === index}
+            playbackRate={playbackRate}
             disabled={disabled}
             isWrong={wrongIds.has(item.id)}
             isCorrectReveal={revealCorrect && item.isCorrect}

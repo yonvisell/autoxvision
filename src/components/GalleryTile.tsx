@@ -7,6 +7,7 @@ type GalleryTileProps = {
   videoUrl: string;
   playback: GalleryPlayback;
   isSequenceActive: boolean;
+  playbackRate: number;
   disabled: boolean;
   isWrong: boolean;
   isCorrectReveal: boolean;
@@ -19,6 +20,7 @@ export function GalleryTile({
   videoUrl,
   playback,
   isSequenceActive,
+  playbackRate,
   disabled,
   isWrong,
   isCorrectReveal,
@@ -36,6 +38,7 @@ export function GalleryTile({
     let frame = 0;
     let active = true;
     const shouldPlay = playback === 'allLoop' || (playback === 'hover' && hovered) || (playback === 'sequence' && isSequenceActive);
+    video.playbackRate = playbackRate;
     video.currentTime = item.clip.start;
 
     const tick = () => {
@@ -66,7 +69,7 @@ export function GalleryTile({
       active = false;
       window.cancelAnimationFrame(frame);
     };
-  }, [disabled, hovered, isSequenceActive, item.clip.end, item.clip.start, playback]);
+  }, [disabled, hovered, isSequenceActive, item.clip.end, item.clip.start, playback, playbackRate]);
 
   return (
     <button

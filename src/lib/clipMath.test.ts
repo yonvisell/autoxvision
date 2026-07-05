@@ -17,9 +17,9 @@ describe('clipMath', () => {
   });
 
   it('caps the forward-gap slider by video length and the global ceiling', () => {
-    expect(maxForwardGapLimit(null, 2)).toBe(180);
+    expect(maxForwardGapLimit(null, 2)).toBe(234);
     expect(maxForwardGapLimit(20, 2.5)).toBe(17.5);
-    expect(maxForwardGapLimit(400, 2.5)).toBe(180);
+    expect(maxForwardGapLimit(400, 2.5)).toBe(234);
     expect(maxForwardGapLimit(2, 2.5)).toBe(0);
   });
 

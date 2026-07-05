@@ -80,6 +80,7 @@ function App() {
   const reactionStartRef = useRef<number>(0);
   const timeoutRef = useRef<number | null>(null);
   const statsRef = useRef<Record<string, AnchorStats>>({});
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const forwardGapLimit = maxForwardGapLimit(video.duration, settings.T);
   const effectiveMinForwardGap = Math.min(settings.minForwardGap, forwardGapLimit);
   const effectiveMaxForwardGap = Math.min(Math.max(settings.maxForwardGap, effectiveMinForwardGap), forwardGapLimit);
@@ -96,6 +97,11 @@ function App() {
     video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, effectiveMinForwardGap) && !video.error
   );
   const currentClip = phase === 'revealing' ? trial?.answer ?? null : trial?.cue ?? null;
+  const canRevealAnswer = Boolean(
+    video.url &&
+      trial &&
+      (phase === 'answering' || (settings.mode === 'mentalLap' && phase !== 'idle' && phase !== 'revealing'))
+  );
 
   useEffect(() => {
     saveSettings(settings);
@@ -118,12 +124,16 @@ function App() {
   }, [settings.T, settings.maxForwardGap, settings.minForwardGap, video.duration]);
 
   useEffect(() => {
+    if (!video.url) {
+      setControlsCollapsed(false);
+      return;
+    }
     if (settings.mode === 'mentalLap') {
       setGalleryCollapsed(true);
       setControlsCollapsed(true);
       setNotesCollapsed(true);
     }
-  }, [settings.mode]);
+  }, [settings.mode, video.url]);
 
   useEffect(() => {
     if (!video.fingerprint) {
@@ -267,6 +277,10 @@ function App() {
     setStatus({ message: 'Loading video metadata...', tone: 'neutral' });
   };
 
+  const requestFile = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleVideoMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
     const duration = event.currentTarget.duration;
     setVideo((previous) => ({ ...previous, duration, error: '' }));
@@ -345,12 +359,18 @@ function App() {
   };
 
   const revealAnswer = useCallback(() => {
-    if (!trial || phase !== 'answering') {
+    const canReveal =
+      Boolean(trial) &&
+      (phase === 'answering' || (settings.mode === 'mentalLap' && phase !== 'idle' && phase !== 'revealing'));
+    if (!canReveal) {
       return;
+    }
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
     }
     setPhase('revealing');
     setStatus({ message: 'Revealing the immediate continuation.', tone: 'good' });
-  }, [phase, trial]);
+  }, [phase, settings.mode, trial]);
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -423,6 +443,10 @@ function App() {
         event.preventDefault();
         revealAnswer();
       }
+      if (event.key.toLowerCase() === 'p') {
+        event.preventDefault();
+        revealAnswer();
+      }
       if (event.key.toLowerCase() === 'm') {
         setSettings((previous) => markCustom(previous, { soundEnabled: !previous.soundEnabled }));
       }
@@ -462,12 +486,13 @@ function App() {
         return;
       }
 
+      const clipWallMs = (settings.T / Math.max(0.25, settings.playbackRate)) * 1000;
       for (let index = 0; index < trial.gallery.length; index += 1) {
         if (!active) {
           return;
         }
         setGallerySequenceIndex(index);
-        await wait(settings.T * 1000);
+        await wait(clipWallMs);
         if (!active) {
           return;
         }
@@ -491,7 +516,7 @@ function App() {
     return () => {
       active = false;
     };
-  }, [phase, settings.T, settings.galleryDelay, settings.galleryPlayback, settings.mode, settings.replayEnabled, trial]);
+  }, [phase, settings.T, settings.galleryDelay, settings.galleryPlayback, settings.mode, settings.playbackRate, settings.replayEnabled, trial]);
 
   const resetScore = () => {
     setScore(0);
@@ -568,6 +593,15 @@ function App() {
       <div className="metadata-loader" aria-hidden="true">
         {video.url ? <video src={video.url} onLoadedMetadata={handleVideoMetadata} onError={handleVideoError} preload="metadata" /> : null}
       </div>
+      <input
+        ref={fileInputRef}
+        className="hidden-file-picker"
+        type="file"
+        accept="video/*,.mov,.mp4,.m4v,.webm"
+        onChange={(event) => handleFileChange(event.currentTarget.files?.[0] ?? null)}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
 
       <header className="top-bar">
         <ScoreBadge score={score} highScore={highScore} />
@@ -583,7 +617,10 @@ function App() {
           clip={currentClip}
           phase={phase}
           replayEnabled={settings.replayEnabled}
+          playbackRate={settings.playbackRate}
+          canReveal={canRevealAnswer}
           onClipEnded={handleCueEnded}
+          onRequestFile={requestFile}
           onReplay={handleReplay}
           onReveal={revealAnswer}
         />
@@ -614,6 +651,7 @@ function App() {
           items={trial?.gallery ?? []}
           playback={settings.galleryPlayback}
           activeSequenceIndex={gallerySequenceIndex}
+          playbackRate={settings.playbackRate}
           instruction={galleryInstruction}
           disabled={phase !== 'answering' || !choicesReady}
           hidden={galleryHidden}

@@ -23,5 +23,6 @@ describe('presets', () => {
     expect(defaultSettings.galleryDelay).toBe(2);
     expect(defaultSettings.minForwardGap).toBe(1);
     expect(defaultSettings.maxForwardGap).toBe(50);
+    expect(defaultSettings.playbackRate).toBe(1);
   });
 });

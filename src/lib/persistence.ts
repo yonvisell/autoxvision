@@ -20,6 +20,9 @@ export function loadSettings(defaults: Settings): Settings {
   if (!Number.isFinite(merged.galleryDelay)) {
     merged.galleryDelay = defaults.galleryDelay;
   }
+  if (!Number.isFinite(merged.playbackRate)) {
+    merged.playbackRate = defaults.playbackRate;
+  }
   // Previous sequence-mode default was 1s; move saved default-shaped sessions to the calmer current wait.
   if (loaded.galleryDelay === 1 && loaded.galleryPlayback === 'sequence') {
     merged.galleryDelay = defaults.galleryDelay;
@@ -29,6 +32,7 @@ export function loadSettings(defaults: Settings): Settings {
   }
   merged.minForwardGap = Math.min(MAX_FORWARD_GAP_SECONDS, Math.max(0, merged.minForwardGap));
   merged.maxForwardGap = Math.min(MAX_FORWARD_GAP_SECONDS, Math.max(merged.minForwardGap, merged.maxForwardGap));
+  merged.playbackRate = Math.min(10, Math.max(0.25, merged.playbackRate));
   if (merged.preset === 'saved' && !loadSavedPreset()) {
     merged.preset = 'custom';
   }

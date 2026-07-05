@@ -6,7 +6,10 @@ type CuePaneProps = {
   clip: Clip | null;
   phase: 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing';
   replayEnabled: boolean;
+  playbackRate: number;
+  canReveal: boolean;
   onClipEnded: () => void;
+  onRequestFile: () => void;
   onReplay: () => void;
   onReveal: () => void;
 };
@@ -16,7 +19,10 @@ export function CuePane({
   clip,
   phase,
   replayEnabled,
+  playbackRate,
+  canReveal,
   onClipEnded,
+  onRequestFile,
   onReplay,
   onReveal
 }: CuePaneProps) {
@@ -41,6 +47,7 @@ export function CuePane({
     let stopped = false;
     setPlayError('');
     video.pause();
+    video.playbackRate = playbackRate;
     video.currentTime = clip.start;
 
     const stopIfEnded = () => {
@@ -80,9 +87,13 @@ export function CuePane({
       window.cancelAnimationFrame(frame);
       video.removeEventListener('seeked', onSeeked);
     };
-  }, [clip, showVideo, videoUrl]);
+  }, [clip, playbackRate, showVideo, videoUrl]);
 
   const handleClick = () => {
+    if (!videoUrl) {
+      onRequestFile();
+      return;
+    }
     if (phase === 'answering' && replayEnabled) {
       onReplay();
     }
@@ -96,7 +107,12 @@ export function CuePane({
 
   return (
     <section className={`cue-pane ${isReveal ? 'cue-pane-reveal' : ''}`} aria-label="Prompt clip">
-      <button className="cue-stage" type="button" onClick={handleClick} title="Click to replay the prompt when replay is enabled">
+      <button
+        className="cue-stage"
+        type="button"
+        onClick={handleClick}
+        title={videoUrl ? 'Click to replay the prompt when replay is enabled' : 'Choose a local video'}
+      >
         {videoUrl ? (
           <video ref={videoRef} src={videoUrl} playsInline muted={phase === 'cuePlaying'} preload="metadata" />
         ) : null}
@@ -120,7 +136,7 @@ export function CuePane({
           className="cue-action cue-action-primary"
           type="button"
           onClick={onReveal}
-          disabled={!videoUrl || phase !== 'answering'}
+          disabled={!videoUrl || !canReveal}
           title="Reveal and play the correct continuation"
         >
           Show answer
