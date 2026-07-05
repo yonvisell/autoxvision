@@ -1,0 +1,435 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ControlPanel } from './components/ControlPanel';
+import { CuePane } from './components/CuePane';
+import { Gallery } from './components/Gallery';
+import { NotesBox } from './components/NotesBox';
+import { ScoreBadge } from './components/ScoreBadge';
+import { StatusLine } from './components/StatusLine';
+import { isVideoLongEnough } from './lib/clipMath';
+import { applyPreset, defaultSettings, markCustom } from './lib/presets';
+import {
+  highScoreKey,
+  loadAnnotations,
+  loadHighScore,
+  loadSettings,
+  loadStats,
+  saveAnnotations,
+  saveHighScore,
+  saveSettings,
+  saveStats
+} from './lib/persistence';
+import { playTone } from './lib/sounds';
+import { createTrial, updateAnchorStats } from './lib/trialEngine';
+import { fingerprintFile } from './lib/videoFingerprint';
+import {
+  createExportFile,
+  mergeAnnotations,
+  nearestAnnotation,
+  parseExportFile,
+  upsertAnnotation
+} from './lib/annotations';
+import type { AnchorStats, Annotation, GalleryItem, Settings, Trial } from './types';
+
+type Phase = 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing';
+type VideoState = {
+  file: File | null;
+  url: string | null;
+  fingerprint: string;
+  duration: number | null;
+  error: string;
+};
+
+const cueDelayMs = 250;
+const correctDelayMs = 280;
+
+function App() {
+  const [settings, setSettings] = useState<Settings>(() => loadSettings(defaultSettings));
+  const [video, setVideo] = useState<VideoState>({
+    file: null,
+    url: null,
+    fingerprint: '',
+    duration: null,
+    error: ''
+  });
+  const [trial, setTrial] = useState<Trial | null>(null);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [noteText, setNoteText] = useState('');
+  const [stats, setStats] = useState<Record<string, AnchorStats>>({});
+  const [wrongIds, setWrongIds] = useState<Set<string>>(new Set());
+  const [status, setStatus] = useState<{ message: string; tone: 'neutral' | 'good' | 'bad' | 'warn' }>({
+    message: 'Choose a local course-walk video to begin.',
+    tone: 'neutral'
+  });
+  const [lastCueStart, setLastCueStart] = useState<number | null>(null);
+  const reactionStartRef = useRef<number>(0);
+  const timeoutRef = useRef<number | null>(null);
+  const statsRef = useRef<Record<string, AnchorStats>>({});
+
+  const canRunTrial = Boolean(
+    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T) && !video.error
+  );
+  const currentClip = phase === 'revealing' ? trial?.answer ?? null : trial?.cue ?? null;
+
+  useEffect(() => {
+    saveSettings(settings);
+  }, [settings]);
+
+  useEffect(() => {
+    if (!video.fingerprint) {
+      setAnnotations([]);
+      setStats({});
+      setHighScore(0);
+      return;
+    }
+    setAnnotations(loadAnnotations(video.fingerprint));
+    setStats(loadStats(video.fingerprint));
+    setHighScore(loadHighScore(video.fingerprint, settings.mode));
+    setScore(0);
+  }, [settings.mode, video.fingerprint]);
+
+  useEffect(() => {
+    if (!video.fingerprint) {
+      return;
+    }
+    saveAnnotations(video.fingerprint, annotations);
+  }, [annotations, video.fingerprint]);
+
+  useEffect(() => {
+    if (!video.fingerprint) {
+      return;
+    }
+    saveStats(video.fingerprint, stats);
+    statsRef.current = stats;
+  }, [stats, video.fingerprint]);
+
+  useEffect(() => {
+    if (!trial) {
+      setNoteText('');
+      return;
+    }
+    const existing = nearestAnnotation(annotations, trial.cueStart);
+    setNoteText(existing?.text ?? '');
+  }, [annotations, trial]);
+
+  useEffect(() => {
+    if (!trial || !video.fingerprint) {
+      return undefined;
+    }
+    const handle = window.setTimeout(() => {
+      setAnnotations((previous) => upsertAnnotation(previous, video.fingerprint, trial.cueStart, noteText));
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [noteText, trial, video.fingerprint]);
+
+  useEffect(
+    () => () => {
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+      if (video.url) {
+        URL.revokeObjectURL(video.url);
+      }
+    },
+    [video.url]
+  );
+
+  const beginTrial = useCallback(
+    (previousCueStart: number | null = null) => {
+      if (!video.duration || !canRunTrial) {
+        setTrial(null);
+        setPhase('idle');
+        return;
+      }
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+      const nextTrial = createTrial({
+        duration: video.duration,
+        settings,
+        stats: statsRef.current,
+        previousCueStart
+      });
+      setTrial(nextTrial);
+      setWrongIds(new Set());
+      setLastCueStart(nextTrial.cueStart);
+      setPhase('cueDelay');
+      setStatus({ message: 'Watch the cue, then pick the immediate continuation.', tone: 'neutral' });
+      timeoutRef.current = window.setTimeout(() => {
+        setPhase('cuePlaying');
+      }, cueDelayMs);
+    },
+    [canRunTrial, settings, video.duration]
+  );
+
+  useEffect(() => {
+    if (!video.url || video.duration === null || video.error) {
+      return;
+    }
+    if (!isVideoLongEnough(video.duration, settings.T)) {
+      setTrial(null);
+      setPhase('idle');
+      setStatus({ message: 'Video is too short for the current T. Lower T to enable trials.', tone: 'warn' });
+      return;
+    }
+    beginTrial(null);
+  }, [beginTrial, settings.T, settings.N, settings.mode, settings.t0, settings.t1, video.duration, video.error, video.url]);
+
+  const handleFileChange = (file: File | null) => {
+    if (!file) {
+      return;
+    }
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+    if (video.url) {
+      URL.revokeObjectURL(video.url);
+    }
+    const url = URL.createObjectURL(file);
+    setVideo({
+      file,
+      url,
+      fingerprint: fingerprintFile(file),
+      duration: null,
+      error: ''
+    });
+    setTrial(null);
+    setPhase('idle');
+    setScore(0);
+    setLastCueStart(null);
+    setStatus({ message: 'Loading video metadata...', tone: 'neutral' });
+  };
+
+  const handleVideoMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const duration = event.currentTarget.duration;
+    setVideo((previous) => ({ ...previous, duration, error: '' }));
+    setStatus({ message: `Loaded ${video.file?.name ?? 'video'} (${duration.toFixed(1)}s).`, tone: 'good' });
+  };
+
+  const handleVideoError = () => {
+    setVideo((previous) => ({ ...previous, error: 'Browser cannot load or decode this video.' }));
+    setStatus({ message: 'Browser cannot load or decode this video. Try another browser-playable file.', tone: 'bad' });
+  };
+
+  const updateSettings = (patch: Partial<Settings>) => {
+    setSettings((previous) => markCustom(previous, patch));
+  };
+
+  const selectPreset = (preset: Settings['preset']) => {
+    setSettings((previous) => applyPreset(previous, preset));
+  };
+
+  const updateScore = (delta: number) => {
+    setScore((previous) => {
+      const next = previous + delta;
+      if (video.fingerprint && next > highScore) {
+        setHighScore(next);
+        saveHighScore(video.fingerprint, settings.mode, next);
+      }
+      return next;
+    });
+  };
+
+  const handleCueEnded = () => {
+    if (phase === 'cuePlaying') {
+      setPhase('answering');
+      reactionStartRef.current = performance.now();
+      setStatus(
+        settings.mode === 'mentalLap'
+          ? { message: 'Run the continuation in your head, then reveal.', tone: 'neutral' }
+          : { message: 'Pick the clip that happens next.', tone: 'neutral' }
+      );
+    }
+    if (phase === 'revealing') {
+      timeoutRef.current = window.setTimeout(() => {
+        beginTrial(trial?.cueStart ?? null);
+      }, 120);
+    }
+  };
+
+  const handleReplay = () => {
+    if (!trial || !settings.replayEnabled || phase !== 'answering') {
+      return;
+    }
+    setPhase('cueDelay');
+    timeoutRef.current = window.setTimeout(() => setPhase('cuePlaying'), cueDelayMs);
+  };
+
+  const revealAnswer = useCallback(() => {
+    if (!trial || phase !== 'answering') {
+      return;
+    }
+    setPhase('revealing');
+    setStatus({ message: 'Revealing the immediate continuation.', tone: 'good' });
+  }, [phase, trial]);
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      if (!trial || phase !== 'answering' || settings.mode === 'mentalLap') {
+        return;
+      }
+      const item = trial.gallery.find((entry) => entry.id === id);
+      if (!item) {
+        return;
+      }
+
+      const reactionMs = performance.now() - reactionStartRef.current;
+      if (item.isCorrect) {
+        updateScore(1);
+        playTone('correct', settings.soundEnabled);
+        setStats((previous) => updateAnchorStats(previous, trial.cueStart, true, reactionMs));
+        setStatus({ message: 'Correct. Watch the answer clip.', tone: 'good' });
+        timeoutRef.current = window.setTimeout(() => {
+          setPhase('revealing');
+        }, correctDelayMs);
+      } else {
+        updateScore(-1);
+        playTone('wrong', settings.soundEnabled);
+        setStats((previous) => updateAnchorStats(previous, trial.cueStart, false, reactionMs));
+        setWrongIds((previous) => new Set(previous).add(id));
+        setStatus({ message: 'Not that one. Try again.', tone: 'bad' });
+      }
+    },
+    [phase, settings.mode, settings.soundEnabled, trial]
+  );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+        return;
+      }
+      if (event.key >= '1' && event.key <= '8') {
+        const index = Number(event.key) - 1;
+        const item: GalleryItem | undefined = trial?.gallery[index];
+        if (item) {
+          handleSelect(item.id);
+        }
+      }
+      if (event.key === ' ' || event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        if (settings.mode === 'mentalLap' && phase === 'answering') {
+          revealAnswer();
+        } else {
+          handleReplay();
+        }
+      }
+      if (event.key.toLowerCase() === 'm') {
+        setSettings((previous) => markCustom(previous, { soundEnabled: !previous.soundEnabled }));
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleSelect, phase, revealAnswer, settings.mode, trial]);
+
+  const resetScore = () => {
+    setScore(0);
+    setStatus({ message: 'Score reset for this session.', tone: 'neutral' });
+  };
+
+  const exportAnnotations = () => {
+    if (!video.fingerprint) {
+      return;
+    }
+    const exportFile = createExportFile(video.fingerprint, video.file?.name ?? 'video', annotations, settings, {
+      [highScoreKey(video.fingerprint, settings.mode)]: highScore
+    });
+    const blob = new Blob([JSON.stringify(exportFile, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `autoxvision-notes-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus({ message: 'Annotations exported as JSON.', tone: 'good' });
+  };
+
+  const importAnnotations = async (file: File | null) => {
+    if (!file || !video.fingerprint) {
+      return;
+    }
+    try {
+      const parsed = parseExportFile(JSON.parse(await file.text()));
+      const mismatch = parsed.videoFingerprint !== video.fingerprint;
+      setAnnotations((previous) => mergeAnnotations(previous, parsed.annotations, video.fingerprint));
+      setStatus({
+        message: mismatch
+          ? 'Imported notes, but fingerprint differs; notes may refer to another video.'
+          : 'Imported notes and merged by cue time.',
+        tone: mismatch ? 'warn' : 'good'
+      });
+    } catch (error) {
+      setStatus({ message: error instanceof Error ? error.message : 'Invalid annotation import.', tone: 'bad' });
+    }
+  };
+
+  const cueStart = trial?.cueStart ?? null;
+  const panelDisabled = !video.url || video.duration === null || Boolean(video.error);
+  const galleryHidden = settings.mode === 'mentalLap';
+
+  const timelineLabel = useMemo(() => {
+    if (!trial) {
+      return 'No active trial';
+    }
+    return `Cue ${trial.cue.start.toFixed(2)}-${trial.cue.end.toFixed(2)}s, answer ${trial.answer.start.toFixed(2)}-${trial.answer.end.toFixed(2)}s`;
+  }, [trial]);
+
+  return (
+    <main className="app-shell">
+      <div className="metadata-loader" aria-hidden="true">
+        {video.url ? <video src={video.url} onLoadedMetadata={handleVideoMetadata} onError={handleVideoError} preload="metadata" /> : null}
+      </div>
+
+      <header className="top-bar">
+        <ScoreBadge score={score} highScore={highScore} />
+        <div>
+          <h1>AutoxVision</h1>
+          <p>{timelineLabel}</p>
+        </div>
+      </header>
+
+      <section className="main-stage">
+        <CuePane
+          videoUrl={video.url}
+          clip={currentClip}
+          phase={phase}
+          replayEnabled={settings.replayEnabled}
+          onClipEnded={handleCueEnded}
+          onReplay={handleReplay}
+          onReveal={revealAnswer}
+        />
+        <NotesBox value={noteText} disabled={!trial || !video.fingerprint} cueStart={cueStart} onChange={setNoteText} />
+      </section>
+
+      <StatusLine message={video.error || status.message} tone={video.error ? 'bad' : status.tone} />
+
+      <section className="lower-deck">
+        <ControlPanel
+          settings={settings}
+          duration={video.duration}
+          disabled={panelDisabled}
+          onFileChange={handleFileChange}
+          onSettingsChange={updateSettings}
+          onPresetChange={selectPreset}
+          onResetScore={resetScore}
+          onExport={exportAnnotations}
+          onImport={importAnnotations}
+        />
+        <Gallery
+          videoUrl={video.url}
+          items={trial?.gallery ?? []}
+          playback={settings.galleryPlayback}
+          disabled={phase !== 'answering'}
+          hidden={galleryHidden}
+          wrongIds={wrongIds}
+          revealCorrect={phase === 'revealing'}
+          onSelect={handleSelect}
+        />
+      </section>
+    </main>
+  );
+}
+
+export default App;

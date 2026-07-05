@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.local
+*.log
+
+# Local test and course-walk media should stay out of git.
+*.mov
+*.MOV
+*.mp4
+*.MP4
+*.m4v
+*.M4V
+*.webm
+*.WEBM
