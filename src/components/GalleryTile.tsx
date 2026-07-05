@@ -72,6 +72,9 @@ export function GalleryTile({
       className={`gallery-tile ${isWrong ? 'tile-wrong' : ''} ${isCorrectReveal ? 'tile-correct' : ''}`}
       onClick={() => onSelect(item.id)}
       disabled={disabled}
+      data-gallery-index={index}
+      data-correct={item.isCorrect ? 'true' : 'false'}
+      data-clip-start={item.clip.start.toFixed(3)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}

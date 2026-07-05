@@ -44,9 +44,10 @@ textarea:disabled {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: grid;
-  grid-template-rows: auto minmax(360px, 1fr) auto minmax(230px, 33vh);
+  grid-template-rows: auto minmax(0, 1fr) auto minmax(180px, 32vh);
   gap: 10px;
   padding: 12px;
   background:
@@ -119,7 +120,6 @@ textarea:disabled {
   display: block;
   width: 100%;
   min-height: 0;
-  height: 100%;
   padding: 0;
   overflow: hidden;
   background: #000;
@@ -131,7 +131,16 @@ textarea:disabled {
   box-shadow: 0 0 0 1px rgba(53, 212, 127, 0.35);
 }
 
-.cue-stage video,
+.cue-stage video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #000;
+}
+
 .gallery-tile video {
   width: 100%;
   height: 100%;
@@ -419,6 +428,9 @@ input[type="number"] {
 
 @media (max-width: 860px) {
   .app-shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
     grid-template-rows: auto minmax(320px, 1fr) auto auto;
   }
 
