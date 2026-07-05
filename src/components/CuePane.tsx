@@ -108,11 +108,21 @@ export function CuePane({
         ) : null}
       </button>
       <div className="cue-actions">
-        <button type="button" onClick={onReplay} disabled={!replayEnabled || !videoUrl || phase !== 'answering'}>
+        <button
+          className="cue-action cue-action-secondary"
+          type="button"
+          onClick={onReplay}
+          disabled={!replayEnabled || !videoUrl || phase !== 'answering'}
+        >
           Replay cue
         </button>
-        <button type="button" onClick={onReveal} disabled={!videoUrl || phase !== 'answering'}>
-          Reveal
+        <button
+          className="cue-action cue-action-primary"
+          type="button"
+          onClick={onReveal}
+          disabled={!videoUrl || phase !== 'answering'}
+        >
+          Reveal answer
         </button>
         {playError ? <span className="inline-warn">{playError}</span> : null}
       </div>

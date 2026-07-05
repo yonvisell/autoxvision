@@ -12,8 +12,8 @@ export function NotesBox({ value, disabled, cueStart, onChange }: NotesBoxProps)
       <textarea
         value={value}
         disabled={disabled}
-        rows={4}
-        placeholder="Terse cue: visual anchor, intended look-ahead, or next-state reminder."
+        rows={3}
+        placeholder="Apex, cone wall, next gate."
         onChange={(event) => onChange(event.currentTarget.value)}
       />
     </label>

@@ -3,7 +3,18 @@ import type { AnchorStats, Annotation, Mode, Settings } from '../types';
 const prefix = 'autoxvision:v1';
 
 export function loadSettings(defaults: Settings): Settings {
-  return read(`${prefix}:settings`, defaults);
+  const loaded = read<Partial<Settings>>(`${prefix}:settings`, {});
+  const merged = { ...defaults, ...loaded };
+  if ((merged.galleryPlayback as string) === 'loop') {
+    merged.galleryPlayback = 'allLoop';
+  }
+  if (!Number.isFinite(merged.galleryDelay)) {
+    merged.galleryDelay = defaults.galleryDelay;
+  }
+  if (merged.preset === 'saved' && !loadSavedPreset()) {
+    merged.preset = 'custom';
+  }
+  return merged;
 }
 
 export function saveSettings(settings: Settings): void {
@@ -36,6 +47,14 @@ export function loadStats(videoFingerprint: string): Record<string, AnchorStats>
 
 export function saveStats(videoFingerprint: string, stats: Record<string, AnchorStats>): void {
   write(`${prefix}:stats:${videoFingerprint}`, stats);
+}
+
+export function loadSavedPreset(): Partial<Settings> | null {
+  return read<Partial<Settings> | null>(`${prefix}:savedPreset`, null);
+}
+
+export function saveSavedPreset(settings: Partial<Settings>): void {
+  write(`${prefix}:savedPreset`, settings);
 }
 
 function read<T>(key: string, fallback: T): T {

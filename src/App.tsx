@@ -11,16 +11,19 @@ import {
   highScoreKey,
   loadAnnotations,
   loadHighScore,
+  loadSavedPreset,
   loadSettings,
   loadStats,
   saveAnnotations,
   saveHighScore,
+  saveSavedPreset,
   saveSettings,
   saveStats
 } from './lib/persistence';
 import { playTone } from './lib/sounds';
 import { createTrial, updateAnchorStats } from './lib/trialEngine';
 import { fingerprintFile } from './lib/videoFingerprint';
+import { savedPresetPayload } from './lib/presets';
 import {
   createExportFile,
   mergeAnnotations,
@@ -44,6 +47,7 @@ const correctDelayMs = 280;
 
 function App() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings(defaultSettings));
+  const [savedPreset, setSavedPreset] = useState<Partial<Settings> | null>(() => loadSavedPreset());
   const [video, setVideo] = useState<VideoState>({
     file: null,
     url: null,
@@ -64,6 +68,7 @@ function App() {
     tone: 'neutral'
   });
   const [lastCueStart, setLastCueStart] = useState<number | null>(null);
+  const [gallerySequenceIndex, setGallerySequenceIndex] = useState<number | null>(null);
   const reactionStartRef = useRef<number>(0);
   const timeoutRef = useRef<number | null>(null);
   const statsRef = useRef<Record<string, AnchorStats>>({});
@@ -156,7 +161,7 @@ function App() {
       setWrongIds(new Set());
       setLastCueStart(nextTrial.cueStart);
       setPhase('cueDelay');
-      setStatus({ message: 'Watch the cue, then pick the immediate continuation.', tone: 'neutral' });
+      setStatus({ message: '', tone: 'neutral' });
       timeoutRef.current = window.setTimeout(() => {
         setPhase('cuePlaying');
       }, cueDelayMs);
@@ -171,7 +176,7 @@ function App() {
     if (!isVideoLongEnough(video.duration, settings.T)) {
       setTrial(null);
       setPhase('idle');
-      setStatus({ message: 'Video is too short for the current T. Lower T to enable trials.', tone: 'warn' });
+      setStatus({ message: 'Video is too short for the current cue length. Lower cue length to enable trials.', tone: 'warn' });
       return;
     }
     beginTrial(null);
@@ -218,7 +223,23 @@ function App() {
   };
 
   const selectPreset = (preset: Settings['preset']) => {
+    if (preset === 'saved') {
+      if (!savedPreset) {
+        setStatus({ message: 'No saved preset yet. Tune controls, then press Save preset.', tone: 'warn' });
+        return;
+      }
+      setSettings((previous) => ({ ...previous, ...savedPreset, preset: 'saved' }));
+      return;
+    }
     setSettings((previous) => applyPreset(previous, preset));
+  };
+
+  const handleSavePreset = () => {
+    const payload = savedPresetPayload(settings);
+    setSavedPreset(payload);
+    saveSavedPreset(payload);
+    setSettings((previous) => ({ ...previous, preset: 'saved' }));
+    setStatus({ message: 'Saved current controls as your preset.', tone: 'good' });
   };
 
   const updateScore = (delta: number) => {
@@ -239,7 +260,7 @@ function App() {
       setStatus(
         settings.mode === 'mentalLap'
           ? { message: 'Run the continuation in your head, then reveal.', tone: 'neutral' }
-          : { message: 'Pick the clip that happens next.', tone: 'neutral' }
+          : { message: '', tone: 'neutral' }
       );
     }
     if (phase === 'revealing') {
@@ -253,6 +274,7 @@ function App() {
     if (!trial || !settings.replayEnabled || phase !== 'answering') {
       return;
     }
+    setGallerySequenceIndex(null);
     setPhase('cueDelay');
     timeoutRef.current = window.setTimeout(() => setPhase('cuePlaying'), cueDelayMs);
   };
@@ -325,6 +347,50 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [handleSelect, phase, revealAnswer, settings.mode, trial]);
 
+  useEffect(() => {
+    if (phase !== 'answering' || settings.galleryPlayback !== 'sequence' || !trial || trial.gallery.length === 0) {
+      setGallerySequenceIndex(null);
+      return undefined;
+    }
+
+    let active = true;
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, ms);
+      });
+
+    const runSequence = async () => {
+      await wait(settings.galleryDelay * 1000);
+      for (let index = 0; index < trial.gallery.length; index += 1) {
+        if (!active) {
+          return;
+        }
+        setGallerySequenceIndex(index);
+        await wait(settings.T * 1000);
+        if (!active) {
+          return;
+        }
+        setGallerySequenceIndex(null);
+        await wait(settings.galleryDelay * 1000);
+      }
+
+      if (active && settings.replayEnabled) {
+        setPhase('cueDelay');
+        setStatus({ message: '', tone: 'neutral' });
+        await wait(cueDelayMs);
+        if (active) {
+          setPhase('cuePlaying');
+        }
+      }
+    };
+
+    void runSequence();
+
+    return () => {
+      active = false;
+    };
+  }, [phase, settings.T, settings.galleryDelay, settings.galleryPlayback, settings.replayEnabled, trial]);
+
   const resetScore = () => {
     setScore(0);
     setStatus({ message: 'Score reset for this session.', tone: 'neutral' });
@@ -369,12 +435,24 @@ function App() {
   const panelDisabled = !video.url || video.duration === null || Boolean(video.error);
   const galleryHidden = settings.mode === 'mentalLap';
 
-  const timelineLabel = useMemo(() => {
+  const galleryInstruction = useMemo(() => {
     if (!trial) {
-      return 'No active trial';
+      return '';
     }
-    return `Cue ${trial.cue.start.toFixed(2)}-${trial.cue.end.toFixed(2)}s, answer ${trial.answer.start.toFixed(2)}-${trial.answer.end.toFixed(2)}s`;
-  }, [trial]);
+    if (phase === 'answering') {
+      if (settings.galleryPlayback === 'sequence') {
+        return 'Pick the next clip. Options play one at a time.';
+      }
+      return 'Pick the clip that happens next.';
+    }
+    if (phase === 'cueDelay' || phase === 'cuePlaying') {
+      return 'Watch the cue. The choices unlock after blackout.';
+    }
+    if (phase === 'revealing') {
+      return 'Correct answer is highlighted.';
+    }
+    return '';
+  }, [phase, settings.galleryPlayback, trial]);
 
   return (
     <main className="app-shell">
@@ -384,9 +462,9 @@ function App() {
 
       <header className="top-bar">
         <ScoreBadge score={score} highScore={highScore} />
-        <div>
+        <div className="brand-lockup">
+          <span className="cone-mark" aria-hidden="true" />
           <h1>AutoxVision</h1>
-          <p>{timelineLabel}</p>
         </div>
       </header>
 
@@ -413,6 +491,7 @@ function App() {
           onFileChange={handleFileChange}
           onSettingsChange={updateSettings}
           onPresetChange={selectPreset}
+          onSavePreset={handleSavePreset}
           onResetScore={resetScore}
           onExport={exportAnnotations}
           onImport={importAnnotations}
@@ -421,6 +500,8 @@ function App() {
           videoUrl={video.url}
           items={trial?.gallery ?? []}
           playback={settings.galleryPlayback}
+          activeSequenceIndex={gallerySequenceIndex}
+          instruction={galleryInstruction}
           disabled={phase !== 'answering'}
           hidden={galleryHidden}
           wrongIds={wrongIds}

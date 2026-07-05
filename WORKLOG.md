@@ -16,6 +16,8 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Video clip-loop implementation: native HTML5 video elements sharing the selected file object URL; cue playback is controlled by seeking and requestAnimationFrame end checks, gallery clips loop or play on hover.
 - Testing approach: Vitest covers pure clip math, trial generation, presets, anchor stats, and annotation export/import behavior. Browser inspection used a generated temporary WebM file.
 - Runtime assumption: Node >=20 is required for Vite/Vitest. The machine default `/usr/local/bin/node` is v11.14.0, so verification used the bundled Node v24.14.0 and npm 10.9.8.
+- UI revision: User requested a calmer drill surface. Default cue length is now 2.5s, gallery playback defaults to one-at-a-time sequence mode, and a 1.0s gallery pause slider controls the blackout before each candidate clip.
+- UI revision: Visible notes import/export buttons were removed from the main controls at user request; notes autosave remains validated.
 
 ## Work log
 
@@ -55,6 +57,12 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Commit: `f04b34a`
 - Notes: Fixed first-viewport layout and cue-video overflow after browser screenshots showed the lower row being pushed/overlapped. Added stable gallery data attributes for automated verification.
 
+### Slice 7 — UI cleanup revision
+
+- Status: Complete.
+- Commit: `Refine drill UI and gallery sequencing`
+- Notes: Removed cue/answer timestamp subtitle, added cone mark, renamed high score, compacted controls into two columns, renamed T/N/t0/t1 labels, added saved preset control, moved gallery instructions into the gallery, reduced notes field prominence, and changed default gallery playback to sequenced clips.
+
 ## Verification log
 
 Commands run:
@@ -80,6 +88,19 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev
 # Result: Vite ready at http://127.0.0.1:5173/.
+
+# Revision validation after UI cleanup:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 15 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
 ```
 
 Visual inspection:
@@ -89,6 +110,8 @@ Visual inspection:
 - States inspected: no file, video loaded/active trial, wrong feedback, correct reveal, notes autosave/export/import, mental-lap gallery-hidden state.
 - Screenshots: `/tmp/autoxvision-shots/01-no-file.png` through `/tmp/autoxvision-shots/05-mental-lap.png`.
 - Issues found and fixed: first screenshot showed controls/gallery below the viewport, then later screenshots showed cue video overflow over the gallery. CSS grid sizing and cue video absolute fill fixed both; final automated overlap check passed.
+- Revision screenshots: `/tmp/autoxvision-revision-final-shots/01-no-file.png` through `/tmp/autoxvision-revision-final-shots/05-mental-lap.png`.
+- Revision checks: Verified no cue/answer subtitle, default cue length 2.5s, high score label, gallery instruction in gallery, no visible notes import/export buttons, no control-panel scroll at 1280x720, saved preset writes to localStorage, notes autosave writes to localStorage, wrong/correct feedback, and mental-lap gallery hidden state.
 
 ## Remaining limitations
 
@@ -97,6 +120,7 @@ List only real limitations that remain at handoff.
 - Direct playback of `.mov` depends on the browser and the video codec. Decode failures are shown inline.
 - Weak-spots mode is intentionally lightweight: it falls back to random until at least three anchor stats exist, then biases recent wrong/slow anchors.
 - This project requires Node >=20. The local default Node on this machine is v11.14.0, so use a modern Node on `PATH` for npm commands.
+- Notes export/import pure functions are still tested, but visible import/export controls were removed from the main UI per user preference.
 
 ## Final handoff summary
 

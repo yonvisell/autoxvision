@@ -10,7 +10,7 @@ export function ScoreBadge({ score, highScore }: ScoreBadgeProps) {
         Score <strong>{score}</strong>
       </span>
       <span>
-        High <strong>{highScore}</strong>
+        High score <strong>{highScore}</strong>
       </span>
     </div>
   );

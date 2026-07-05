@@ -29,8 +29,8 @@ export type Annotation = {
 };
 
 export type Mode = 'random' | 'sequential' | 'weakSpots' | 'mentalLap';
-export type Preset = 'custom' | 'encoding' | 'learning' | 'performance' | 'pressure';
-export type GalleryPlayback = 'loop' | 'hover';
+export type Preset = 'custom' | 'saved' | 'encoding' | 'learning' | 'performance' | 'pressure';
+export type GalleryPlayback = 'sequence' | 'hover' | 'allLoop';
 
 export type Settings = {
   T: number;
@@ -38,6 +38,7 @@ export type Settings = {
   mode: Mode;
   preset: Preset;
   galleryPlayback: GalleryPlayback;
+  galleryDelay: number;
   replayEnabled: boolean;
   soundEnabled: boolean;
   t0: number;

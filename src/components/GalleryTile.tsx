@@ -6,6 +6,7 @@ type GalleryTileProps = {
   index: number;
   videoUrl: string;
   playback: GalleryPlayback;
+  isSequenceActive: boolean;
   disabled: boolean;
   isWrong: boolean;
   isCorrectReveal: boolean;
@@ -17,6 +18,7 @@ export function GalleryTile({
   index,
   videoUrl,
   playback,
+  isSequenceActive,
   disabled,
   isWrong,
   isCorrectReveal,
@@ -33,7 +35,7 @@ export function GalleryTile({
 
     let frame = 0;
     let active = true;
-    const shouldPlay = playback === 'loop' || hovered;
+    const shouldPlay = playback === 'allLoop' || (playback === 'hover' && hovered) || (playback === 'sequence' && isSequenceActive);
     video.currentTime = item.clip.start;
 
     const tick = () => {
@@ -41,12 +43,12 @@ export function GalleryTile({
         return;
       }
       if (video.currentTime >= item.clip.end - 0.015) {
-        if (shouldPlay) {
+        if (playback === 'allLoop' || (playback === 'hover' && shouldPlay)) {
           video.currentTime = item.clip.start;
           void video.play().catch(() => undefined);
         } else {
           video.pause();
-          video.currentTime = item.clip.start;
+          video.currentTime = item.clip.end;
         }
       }
       frame = window.requestAnimationFrame(tick);
@@ -64,7 +66,7 @@ export function GalleryTile({
       active = false;
       window.cancelAnimationFrame(frame);
     };
-  }, [disabled, hovered, item.clip.end, item.clip.start, playback]);
+  }, [disabled, hovered, isSequenceActive, item.clip.end, item.clip.start, playback]);
 
   return (
     <button
@@ -82,6 +84,7 @@ export function GalleryTile({
       aria-label={`Gallery clip ${index + 1}`}
     >
       <video ref={videoRef} src={videoUrl} muted playsInline preload="metadata" />
+      {playback === 'sequence' && !isSequenceActive ? <span className="tile-blackout" /> : null}
       <span className="tile-number">{index + 1}</span>
     </button>
   );

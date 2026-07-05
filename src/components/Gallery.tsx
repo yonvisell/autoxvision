@@ -5,6 +5,8 @@ type GalleryProps = {
   videoUrl: string | null;
   items: GalleryItem[];
   playback: GalleryPlayback;
+  activeSequenceIndex: number | null;
+  instruction: string;
   disabled: boolean;
   hidden: boolean;
   wrongIds: Set<string>;
@@ -16,6 +18,8 @@ export function Gallery({
   videoUrl,
   items,
   playback,
+  activeSequenceIndex,
+  instruction,
   disabled,
   hidden,
   wrongIds,
@@ -27,7 +31,7 @@ export function Gallery({
       <section className="gallery gallery-empty" aria-label="Gallery">
         <div>
           <strong>Mental lap</strong>
-          <span>Gallery hidden. Press Space or Reveal when your mental continuation is ready.</span>
+          <span>Gallery hidden. Press Space or Reveal answer when your mental continuation is ready.</span>
         </div>
       </section>
     );
@@ -46,19 +50,23 @@ export function Gallery({
 
   return (
     <section className="gallery" aria-label="Gallery">
-      {items.map((item, index) => (
-        <GalleryTile
-          key={item.id}
-          item={item}
-          index={index}
-          videoUrl={videoUrl}
-          playback={playback}
-          disabled={disabled}
-          isWrong={wrongIds.has(item.id)}
-          isCorrectReveal={revealCorrect && item.isCorrect}
-          onSelect={onSelect}
-        />
-      ))}
+      {instruction ? <div className="gallery-instruction">{instruction}</div> : null}
+      <div className="gallery-strip">
+        {items.map((item, index) => (
+          <GalleryTile
+            key={item.id}
+            item={item}
+            index={index}
+            videoUrl={videoUrl}
+            playback={playback}
+            isSequenceActive={playback !== 'sequence' || activeSequenceIndex === index}
+            disabled={disabled}
+            isWrong={wrongIds.has(item.id)}
+            isCorrectReveal={revealCorrect && item.isCorrect}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
     </section>
   );
 }

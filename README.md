@@ -35,14 +35,16 @@ The video remains local in the browser. It is not uploaded.
 ## Controls
 
 - Video file picker.
-- `T` slider: cue and answer/gallery clip duration.
-- `N` slider: number of gallery items, range `2–8`, default `3`.
+- Cue length slider: cue and answer/gallery clip duration, default `2.5s`.
+- Choices slider: number of gallery items, range `2–8`, default `3`.
+- Gallery pause slider: blackout/pause before each candidate in sequence playback.
 - Preset dropdown: quick settings for encoding, learning, performance, and pressure.
+- Save preset button: stores the current control setup as the saved preset.
 - Mode dropdown: random recall, sequential recall, weak spots, and mental lap.
-- Gallery playback: loop all clips or play clips on hover.
+- Gallery playback: sequence clips one at a time by default, play clips on hover, or loop all clips.
 - Replay setting: allow cue replay and, if implemented cleanly, small replay affordances for gallery tiles without changing primary click-to-select behavior.
 - Advanced range controls: optional `t0` and `t1` bounds in seconds.
-- Sound mute, reset score, export annotations, import annotations.
+- Sound mute and reset score.
 
 ## Notes and persistence
 
