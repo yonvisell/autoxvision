@@ -94,6 +94,11 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Status: Complete.
 - Notes: Ensured controls remain open on first load when no video is loaded, even if saved settings are in mental-lap mode, and added click-to-choose-video behavior on the empty prompt panel. Added a Playback speed slider from 0.25x to 10x that applies to both prompt and gallery clips and shortens one-by-one gallery timing accordingly. Raised time-slider ceilings by roughly 30% where practical: prompt max 26s, choice wait max 4s, and global forward-gap cap 234s. In mental-lap mode, Show answer is available before the prompt finishes and has `P` as the reveal hotkey because `R` remains replay.
 
+### Slice 14 — Mental-lap reveal overlap and bottom help line
+
+- Status: Complete.
+- Notes: Mental-lap reveal now preserves the previously computed answer end time but starts playback at prompt end minus 20% of prompt length, removing the dead source-time gap while retaining the planned answer endpoint. Moved instructions and hotkeys into a single very small fixed bottom overlay line, with current instruction/status on the left and hotkeys on the right.
+
 ## Verification log
 
 Commands run:
@@ -238,6 +243,23 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev -- --host 127.0.0.1
 # Result: Vite ready at http://127.0.0.1:5173/ and left running after handoff.
+
+# Mental-lap reveal overlap / bottom help revision:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 19 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev -- --host 127.0.0.1
+# Result: Vite ready at http://127.0.0.1:5173/ and left running after handoff.
 ```
 
 Visual inspection:
@@ -261,6 +283,7 @@ Visual inspection:
 - Inline-control screenshots: `/tmp/autoxvision-inline-controls-shots/01-inline-controls.png` and `/tmp/autoxvision-inline-controls-shots/02-mental-lap-focused.png`.
 - Inline-control checks: Verified Advanced is gone; Max gap defaults to 50s before file load with a 180s slider cap; short test video clamps Max gap to video duration minus prompt duration; gallery starts remain after prompt end, inside the effective forward window, and separated by the computed minimum lapse; gallery instruction overlays inside the gallery strip; prompt-gallery vertical gap is compact; Space and the Replay button replay the prompt; mental-lap auto-collapses controls, notes, and gallery into a compact rail; mental-lap does not automatically replay after waiting; and Enter reveals the answer after mental replay.
 - Startup/speed checks: Verified controls stay open on first load when saved settings are mental-lap; the empty prompt panel opens the file chooser; prompt max is 26s, choice-wait max is 4s, and unloaded Max gap cap is 234s; Speed slider has min 0.25, max 10, default 1; a 2x speed setting reaches both the prompt video and gallery videos; and `P` reveals the answer in mental-lap mode.
+- Mental-lap overlap checks: Verified `P` reveal begins before the prompt end by the requested overlap window while the unit test preserves the previously computed answer end time. Verified the fixed bottom help line is at the window bottom, under 16px tall, and contains current instruction/status text plus hotkeys.
 
 ## Remaining limitations
 

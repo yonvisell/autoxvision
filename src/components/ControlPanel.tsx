@@ -274,7 +274,6 @@ export function ControlPanel({
         Reset score
       </button>
 
-      <p className="shortcut-hint">Keys: 1-8 choose, Space/R replay, Enter reveal, M mute.</p>
     </aside>
   );
 }

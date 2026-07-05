@@ -580,6 +580,8 @@ function App() {
     }
     return '';
   }, [choicesReady, phase, settings.galleryDelay, settings.galleryPlayback, trial]);
+  const bottomInstruction =
+    video.error || status.message || galleryInstruction || (!video.url ? 'Click the prompt or choose Video to load a local file.' : '');
 
   return (
     <main
@@ -682,6 +684,10 @@ function App() {
           onToggleCollapsed={() => setControlsCollapsed((previous) => !previous)}
         />
       </section>
+      <div className="bottom-help" aria-label="Instructions and hotkeys">
+        <span>{bottomInstruction}</span>
+        <span>1-8 choose | Space/R replay | P/Enter answer | M mute</span>
+      </div>
     </main>
   );
 }

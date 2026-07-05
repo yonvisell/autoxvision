@@ -589,13 +589,6 @@ input[type="number"] {
   display: none;
 }
 
-.shortcut-hint {
-  margin: 0;
-  color: #8794a5;
-  font-size: 0.64rem;
-  line-height: 1.25;
-}
-
 .data-tools {
   color: #8b98a8;
   font-size: 0.7rem;
@@ -854,6 +847,38 @@ input[type="number"] {
 .choices-empty strong,
 .gallery-empty strong {
   color: #c8d3df;
+}
+
+.bottom-help {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  min-height: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 1px 8px;
+  overflow: hidden;
+  border-top: 1px solid rgba(55, 68, 84, 0.72);
+  background: rgba(4, 7, 10, 0.78);
+  color: #93a0af;
+  font-size: 0.56rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.bottom-help span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bottom-help span:last-child {
+  flex: 0 0 auto;
+  color: #b6c2d0;
 }
 
 @media (max-width: 860px) {

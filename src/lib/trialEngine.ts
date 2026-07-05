@@ -33,7 +33,8 @@ export function createTrial({
     maxGap: forwardGap.max,
     random
   });
-  const answer = gallery.find((item) => item.isCorrect)?.clip ?? gallery[0].clip;
+  const baseAnswer = gallery.find((item) => item.isCorrect)?.clip ?? gallery[0].clip;
+  const answer = settings.mode === 'mentalLap' ? mentalLapRevealClip(cue.end, settings.T, baseAnswer.end) : baseAnswer;
 
   return {
     id: `trial-${cueStart.toFixed(3)}-${Date.now()}-${Math.floor(random() * 1_000_000)}`,
@@ -42,6 +43,13 @@ export function createTrial({
     cueStart: roundTime(cueStart),
     createdAt: Date.now(),
     gallery
+  };
+}
+
+function mentalLapRevealClip(cueEnd: number, T: number, answerEnd: number) {
+  return {
+    start: roundTime(Math.max(0, cueEnd - T * 0.2)),
+    end: roundTime(answerEnd)
   };
 }
 

@@ -94,6 +94,20 @@ describe('trialEngine', () => {
     expect(trial.cueStart).toBe(5.5);
   });
 
+  it('starts mental-lap reveal before prompt end while preserving the computed answer end', () => {
+    const trial = createTrial({
+      duration: 30,
+      settings: { ...defaultSettings, mode: 'mentalLap', T: 2, minForwardGap: 1, maxForwardGap: 3 },
+      random: () => 0.5
+    });
+    const baseAnswer = trial.gallery.find((item) => item.isCorrect)?.clip;
+
+    expect(baseAnswer).toBeDefined();
+    expect(trial.answer.end).toBe(baseAnswer?.end);
+    expect(trial.answer.start).toBeCloseTo(trial.cue.end - 0.4, 3);
+    expect(trial.answer.start).toBeLessThan(trial.cue.end);
+  });
+
   it('updates weak-spot anchor stats', () => {
     const stats = updateAnchorStats({}, 1.12, false, 1200);
     const stat = Object.values(stats)[0];
