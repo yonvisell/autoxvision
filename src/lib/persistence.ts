@@ -11,6 +11,9 @@ export function loadSettings(defaults: Settings): Settings {
   if (!Number.isFinite(merged.galleryDelay)) {
     merged.galleryDelay = defaults.galleryDelay;
   }
+  if (!Number.isFinite(merged.answerGap)) {
+    merged.answerGap = defaults.answerGap;
+  }
   // Previous sequence-mode default was 1s; move saved default-shaped sessions to the calmer current wait.
   if (loaded.galleryDelay === 1 && loaded.galleryPlayback === 'sequence') {
     merged.galleryDelay = defaults.galleryDelay;

@@ -4,27 +4,45 @@ type ControlPanelProps = {
   settings: Settings;
   duration: number | null;
   disabled: boolean;
+  collapsed: boolean;
   onFileChange: (file: File | null) => void;
   onSettingsChange: (patch: Partial<Settings>) => void;
   onPresetChange: (preset: Preset) => void;
   onSavePreset: () => void;
   onResetScore: () => void;
+  onToggleCollapsed: () => void;
 };
 
 export function ControlPanel({
   settings,
   duration,
   disabled,
+  collapsed,
   onFileChange,
   onSettingsChange,
   onPresetChange,
   onSavePreset,
-  onResetScore
+  onResetScore,
+  onToggleCollapsed
 }: ControlPanelProps) {
   const applyCustom = (patch: Partial<Settings>) => onSettingsChange(patch);
 
+  if (collapsed) {
+    return (
+      <aside className="control-panel control-panel-collapsed" aria-label="Controls">
+        <button type="button" className="collapse-tab" onClick={onToggleCollapsed} title="Expand controls" aria-label="Expand controls">
+          Controls
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside className="control-panel" aria-label="Controls">
+      <button type="button" className="panel-collapse-button" onClick={onToggleCollapsed} title="Collapse controls" aria-label="Collapse controls">
+        Collapse
+      </button>
+
       <label className="file-control inline-control">
         <span>Video</span>
         <input
@@ -153,6 +171,18 @@ export function ControlPanel({
           </div>
 
           <div className="range-row">
+            <label title="Minimum source-time gap between prompt end and the correct answer clip">
+              <span>Forward gap <strong>{settings.answerGap.toFixed(2)}s</strong></span>
+              <input
+                type="range"
+                min="0"
+                max="3"
+                step="0.25"
+                value={settings.answerGap}
+                disabled={disabled}
+                onChange={(event) => applyCustom({ answerGap: Number(event.currentTarget.value) })}
+              />
+            </label>
             <label title="Lower cue-start bound">
               <span>Start (s)</span>
               <input
@@ -164,6 +194,9 @@ export function ControlPanel({
                 onChange={(event) => applyCustom({ t0: Math.max(0, Number(event.currentTarget.value) || 0) })}
               />
             </label>
+          </div>
+
+          <div className="range-row">
             <label title="Optional upper cue-start bound">
               <span>End (s)</span>
               <input
@@ -180,11 +213,11 @@ export function ControlPanel({
                 }
               />
             </label>
-          </div>
 
-          <button type="button" className="reset-score" onClick={onResetScore} disabled={disabled}>
-            Reset score
-          </button>
+            <button type="button" className="reset-score" onClick={onResetScore} disabled={disabled}>
+              Reset score
+            </button>
+          </div>
         </div>
       </details>
 

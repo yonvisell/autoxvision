@@ -19,10 +19,11 @@ export function createTrial({
   random = Math.random
 }: TrialContext): Trial {
   const t0 = Math.max(0, settings.t0);
-  const t1 = clampT1(duration, settings.T, t0, settings.t1);
-  const cueStart = pickCueStart(settings.mode, t0, t1, settings.T, stats, previousCueStart, random);
+  const answerGap = Math.max(0, settings.answerGap);
+  const t1 = clampT1(duration, settings.T, t0, settings.t1, answerGap);
+  const cueStart = pickCueStart(settings.mode, t0, t1, settings.T, answerGap, stats, previousCueStart, random);
   const cue = clip(cueStart, settings.T);
-  const answer = clip(cueStart + settings.T, settings.T);
+  const answer = clip(cueStart + settings.T + answerGap, settings.T);
   const correct: GalleryItem = {
     id: `correct-${cueStart.toFixed(3)}-${Date.now()}`,
     clip: answer,
@@ -45,13 +46,14 @@ function pickCueStart(
   t0: number,
   t1: number,
   T: number,
+  answerGap: number,
   stats: Record<string, AnchorStats>,
   previousCueStart: number | null,
   random: Random
 ): number {
   if (mode === 'sequential' || mode === 'mentalLap') {
     if (previousCueStart !== null && Number.isFinite(previousCueStart)) {
-      const next = previousCueStart + T;
+      const next = previousCueStart + T + answerGap;
       if (next <= t1) {
         return roundTime(next);
       }

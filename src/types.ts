@@ -39,6 +39,7 @@ export type Settings = {
   preset: Preset;
   galleryPlayback: GalleryPlayback;
   galleryDelay: number;
+  answerGap: number;
   replayEnabled: boolean;
   soundEnabled: boolean;
   t0: number;

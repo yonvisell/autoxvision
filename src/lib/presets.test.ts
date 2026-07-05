@@ -21,5 +21,6 @@ describe('presets', () => {
     expect(defaultSettings.T).toBe(2.5);
     expect(defaultSettings.galleryPlayback).toBe('sequence');
     expect(defaultSettings.galleryDelay).toBe(2);
+    expect(defaultSettings.answerGap).toBe(1);
   });
 });

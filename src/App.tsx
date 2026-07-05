@@ -68,6 +68,8 @@ function App() {
   const [activeMissId, setActiveMissId] = useState<string | null>(null);
   const [lowerHeight, setLowerHeight] = useState(260);
   const [choicesReady, setChoicesReady] = useState(false);
+  const [controlsCollapsed, setControlsCollapsed] = useState(false);
+  const [notesCollapsed, setNotesCollapsed] = useState(false);
   const [status, setStatus] = useState<{ message: string; tone: 'neutral' | 'good' | 'bad' | 'warn' }>({
     message: 'Choose a local course-walk video to begin.',
     tone: 'neutral'
@@ -79,7 +81,7 @@ function App() {
   const statsRef = useRef<Record<string, AnchorStats>>({});
 
   const canRunTrial = Boolean(
-    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T) && !video.error
+    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, settings.answerGap) && !video.error
   );
   const currentClip = phase === 'revealing' ? trial?.answer ?? null : trial?.cue ?? null;
 
@@ -180,14 +182,14 @@ function App() {
     if (!video.url || video.duration === null || video.error) {
       return;
     }
-    if (!isVideoLongEnough(video.duration, settings.T)) {
+    if (!isVideoLongEnough(video.duration, settings.T, settings.answerGap)) {
       setTrial(null);
       setPhase('idle');
-      setStatus({ message: 'Video is too short for the current prompt length. Lower prompt length to enable trials.', tone: 'warn' });
+      setStatus({ message: 'Video is too short for the current prompt length and forward gap.', tone: 'warn' });
       return;
     }
     beginTrial(null);
-  }, [beginTrial, settings.T, settings.N, settings.mode, settings.t0, settings.t1, video.duration, video.error, video.url]);
+  }, [beginTrial, settings.T, settings.N, settings.answerGap, settings.mode, settings.t0, settings.t1, video.duration, video.error, video.url]);
 
   const handleFileChange = (file: File | null) => {
     if (!file) {
@@ -497,7 +499,10 @@ function App() {
   }, [choicesReady, phase, settings.galleryDelay, settings.galleryPlayback, trial]);
 
   return (
-    <main className="app-shell" style={{ '--lower-height': `${lowerHeight}px` } as React.CSSProperties}>
+    <main
+      className={`app-shell${controlsCollapsed ? ' controls-collapsed' : ''}${notesCollapsed ? ' notes-collapsed' : ''}`}
+      style={{ '--lower-height': `${lowerHeight}px` } as React.CSSProperties}
+    >
       <div className="metadata-loader" aria-hidden="true">
         {video.url ? <video src={video.url} onLoadedMetadata={handleVideoMetadata} onError={handleVideoError} preload="metadata" /> : null}
       </div>
@@ -520,7 +525,14 @@ function App() {
           onReplay={handleReplay}
           onReveal={revealAnswer}
         />
-        <NotesBox value={noteText} disabled={!trial || !video.fingerprint} cueStart={cueStart} onChange={setNoteText} />
+        <NotesBox
+          value={noteText}
+          disabled={!trial || !video.fingerprint}
+          cueStart={cueStart}
+          collapsed={notesCollapsed}
+          onChange={setNoteText}
+          onToggleCollapsed={() => setNotesCollapsed((previous) => !previous)}
+        />
       </section>
 
       <StatusLine message={video.error || status.message} tone={video.error ? 'bad' : status.tone} />
@@ -558,11 +570,13 @@ function App() {
           settings={settings}
           duration={video.duration}
           disabled={panelDisabled}
+          collapsed={controlsCollapsed}
           onFileChange={handleFileChange}
           onSettingsChange={updateSettings}
           onPresetChange={selectPreset}
           onSavePreset={handleSavePreset}
           onResetScore={resetScore}
+          onToggleCollapsed={() => setControlsCollapsed((previous) => !previous)}
         />
       </section>
     </main>

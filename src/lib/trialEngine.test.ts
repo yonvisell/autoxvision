@@ -10,13 +10,13 @@ describe('trialEngine', () => {
     expect(sampleUniform(2, 4, () => 0.5)).toBe(3);
   });
 
-  it('creates an immediate-continuation answer and one correct gallery item', () => {
+  it('creates a forward-gap answer and one correct gallery item', () => {
     const trial = createTrial({
       duration: 20,
-      settings: { ...defaultSettings, T: 1, N: 4 },
+      settings: { ...defaultSettings, T: 1, N: 4, answerGap: 1 },
       random: () => 0.25
     });
-    expect(trial.answer.start).toBeCloseTo(trial.cue.end);
+    expect(trial.answer.start - trial.cue.end).toBeCloseTo(1);
     expect(trial.answer.end - trial.answer.start).toBeCloseTo(1);
     expect(trial.gallery).toHaveLength(4);
     expect(trial.gallery.filter((item) => item.isCorrect)).toHaveLength(1);
@@ -41,10 +41,10 @@ describe('trialEngine', () => {
     const trial = createTrial({
       duration: 20,
       previousCueStart: 4,
-      settings: { ...defaultSettings, mode: 'sequential', T: 0.5 },
+      settings: { ...defaultSettings, mode: 'sequential', T: 0.5, answerGap: 1 },
       random: () => 0
     });
-    expect(trial.cueStart).toBe(4.5);
+    expect(trial.cueStart).toBe(5.5);
   });
 
   it('updates weak-spot anchor stats', () => {
