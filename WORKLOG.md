@@ -109,6 +109,11 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Status: Complete.
 - Notes: Added a compact `Course start` prompt control for sequential recall and mental-lap mode. It starts a fresh trial at the active course start (`Start (s)` / `t0`) instead of continuing from the current progressive position, while remaining hidden in random and weak-spots modes.
 
+### Slice 17 — Strict wrong-choice exclusion window
+
+- Status: Complete.
+- Notes: Wrong gallery alternatives now use a non-negotiable exclusion window from `prompt start - prompt length` through `correct answer end + prompt length`. The sampler may relax spacing among wrong alternatives if the remaining valid course time is tight, but it no longer relaxes the prompt-through-answer exclusion; if no outside time exists, it returns fewer wrong alternatives rather than sampling inside the forbidden region.
+
 ## Verification log
 
 Commands run:
@@ -296,6 +301,19 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
 # Result: passed, Vite production build written to dist/.
+
+# Strict wrong-choice exclusion revision:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 22 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
 ```
 
 Visual inspection:
@@ -322,6 +340,7 @@ Visual inspection:
 - Mental-lap overlap checks: Verified `P` reveal begins before the prompt end by the requested overlap window while the unit test preserves the previously computed answer end time. Verified the fixed bottom help line is at the window bottom, under 16px tall, and contains current instruction/status text plus hotkeys.
 - Remote distractor checks: Verified in local Chrome with ignored `AAXLPM1.MOV` that random-mode wrong starts were roughly 35s, 133s, and 221s away from the correct answer; sequential-mode wrong starts were roughly 24s, 103s, and 343s away. In both modes, selecting the correct tile entered reveal mode with the main video current time before the correct answer start, confirming prompt-through-answer playback.
 - Course-start restart checks: Verified in local Chrome with ignored `AAXLPM1.MOV` that `Course start` appears once in sequential and mental-lap modes, is hidden in random mode, and restarts playback near `Start (s) = 5` when that active course start is configured.
+- Strict exclusion checks: Verified in local Chrome with ignored `AAXLPM1.MOV` that a random-mode trial with `T = 2` had forbidden wrong-choice interval `185.69s-195.09s`; all wrong gallery starts were outside that interval.
 
 ## Remaining limitations
 

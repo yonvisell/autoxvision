@@ -39,11 +39,34 @@ describe('trialEngine', () => {
     });
 
     const correct = trial.gallery.find((item) => item.isCorrect);
+    const forbiddenStart = trial.cue.start - 2;
+    const forbiddenEnd = (correct?.clip.end ?? 0) + 2;
 
     expect(correct).toBeDefined();
     for (const item of trial.gallery.filter((entry) => !entry.isCorrect)) {
       expect(Math.abs(item.clip.start - (correct?.clip.start ?? 0))).toBeGreaterThanOrEqual(9.999);
       expect(item.clip.start < trial.cue.start - 9.999 || item.clip.start > (correct?.clip.start ?? 0) + 9.999).toBe(true);
+      expect(item.clip.start <= forbiddenStart || item.clip.start >= forbiddenEnd).toBe(true);
+    }
+  });
+
+  it('never samples wrong choices between the prompt and buffered answer region', () => {
+    let i = 0;
+    const values = [0.5, 0.45, 0.15, 0.55, 0.75, 0.95, 0.25, 0.65, 0.35, 0.85];
+    const trial = createTrial({
+      duration: 14,
+      forcedCueStart: 3,
+      settings: { ...defaultSettings, mode: 'random', T: 2, N: 4, minForwardGap: 1, maxForwardGap: 1 },
+      random: () => values[i++ % values.length]
+    });
+    const correct = trial.gallery.find((item) => item.isCorrect);
+    const forbiddenStart = trial.cue.start - 2;
+    const forbiddenEnd = (correct?.clip.end ?? 0) + 2;
+
+    expect(correct?.clip.start).toBe(6);
+    for (const item of trial.gallery.filter((entry) => !entry.isCorrect)) {
+      expect(item.clip.start <= forbiddenStart || item.clip.start >= forbiddenEnd).toBe(true);
+      expect(item.clip.start > trial.cue.start && item.clip.start < (correct?.clip.start ?? 0)).toBe(false);
     }
   });
 
@@ -57,11 +80,14 @@ describe('trialEngine', () => {
       random: () => values[i++ % values.length]
     });
     const correct = trial.gallery.find((item) => item.isCorrect);
+    const forbiddenStart = trial.cue.start - 2;
+    const forbiddenEnd = (correct?.clip.end ?? 0) + 2;
 
     expect(trial.cueStart).toBe(43);
     expect(correct).toBeDefined();
     for (const item of trial.gallery.filter((entry) => !entry.isCorrect)) {
       expect(Math.abs(item.clip.start - (correct?.clip.start ?? 0))).toBeGreaterThanOrEqual(9.999);
+      expect(item.clip.start <= forbiddenStart || item.clip.start >= forbiddenEnd).toBe(true);
     }
   });
 

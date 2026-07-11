@@ -205,34 +205,22 @@ function sampleRemoteDistractorStarts({
 
   const sourceStart = 0;
   const sourceEnd = Math.max(sourceStart, duration - T);
-  const idealGap = Math.max(REMOTE_DISTRACTOR_GAP_SECONDS, T * 4);
-  const gaps = uniqueDescending([
-    idealGap,
-    idealGap * 0.75,
-    idealGap * 0.5,
-    idealGap * 0.25,
-    T + EPS,
-    EPS
-  ]);
+  const intervals = remoteDistractorIntervals(sourceStart, sourceEnd, cueStart, correctStart + T, T);
+  const separations = uniqueDescending([REMOTE_DISTRACTOR_GAP_SECONDS, T * 4, T * 2, T, EPS]);
 
-  for (const gap of gaps) {
-    const intervals = remoteDistractorIntervals(sourceStart, sourceEnd, cueStart, correctStart, gap);
-    const starts = sampleStartsFromIntervals(intervals, count, Math.max(T, gap / 2), random);
+  for (const separation of separations) {
+    const starts = sampleStartsFromIntervals(intervals, count, separation, random);
     if (starts.length === count) {
       return starts;
     }
   }
 
-  const relaxed = remoteDistractorIntervals(sourceStart, sourceEnd, cueStart, correctStart, EPS);
-  const spread = spreadStartsAcrossIntervals(relaxed, count);
+  const spread = spreadStartsAcrossIntervals(intervals, count);
   if (spread.length > 0) {
     return spread;
   }
 
-  return Array.from({ length: count }, (_, index) => {
-    const fraction = count === 1 ? 0 : index / (count - 1);
-    return roundTime(sourceStart + (sourceEnd - sourceStart) * fraction);
-  });
+  return [];
 }
 
 function uniqueDescending(values: number[]): number[] {
@@ -243,15 +231,15 @@ function remoteDistractorIntervals(
   sourceStart: number,
   sourceEnd: number,
   cueStart: number,
-  correctStart: number,
-  gap: number
+  correctEnd: number,
+  delta: number
 ): TimeInterval[] {
-  const beforeEnd = Math.min(sourceEnd, cueStart - gap);
-  const afterStart = Math.max(sourceStart, correctStart + gap);
+  const forbiddenStart = Math.max(sourceStart, cueStart - delta);
+  const forbiddenEnd = Math.min(sourceEnd, correctEnd + delta);
   return [
-    { start: sourceStart, end: beforeEnd },
-    { start: afterStart, end: sourceEnd }
-  ].filter((interval) => interval.end + EPS >= interval.start);
+    { start: sourceStart, end: forbiddenStart },
+    { start: forbiddenEnd, end: sourceEnd }
+  ].filter((interval) => interval.end - interval.start >= EPS);
 }
 
 function sampleStartsFromIntervals(
