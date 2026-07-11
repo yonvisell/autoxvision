@@ -106,6 +106,18 @@ describe('trialEngine', () => {
     expect(trial.cueStart).toBe(5.5);
   });
 
+  it('can force progressive modes back to the course start', () => {
+    const trial = createTrial({
+      duration: 40,
+      previousCueStart: 20,
+      forcedCueStart: 3,
+      settings: { ...defaultSettings, mode: 'sequential', t0: 3, T: 1, minForwardGap: 1, maxForwardGap: 4 },
+      random: () => 0.8
+    });
+
+    expect(trial.cueStart).toBe(3);
+  });
+
   it('starts mental-lap reveal before prompt end while preserving the computed answer end', () => {
     const trial = createTrial({
       duration: 30,

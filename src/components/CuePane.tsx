@@ -8,10 +8,12 @@ type CuePaneProps = {
   replayEnabled: boolean;
   playbackRate: number;
   canReveal: boolean;
+  canRestartCourse: boolean;
   onClipEnded: () => void;
   onRequestFile: () => void;
   onReplay: () => void;
   onReveal: () => void;
+  onRestartCourse: () => void;
 };
 
 export function CuePane({
@@ -21,10 +23,12 @@ export function CuePane({
   replayEnabled,
   playbackRate,
   canReveal,
+  canRestartCourse,
   onClipEnded,
   onRequestFile,
   onReplay,
-  onReveal
+  onReveal,
+  onRestartCourse
 }: CuePaneProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const endedRef = useRef(onClipEnded);
@@ -132,6 +136,17 @@ export function CuePane({
         >
           Replay prompt
         </button>
+        {canRestartCourse ? (
+          <button
+            className="cue-action cue-action-secondary"
+            type="button"
+            onClick={onRestartCourse}
+            disabled={!videoUrl}
+            title="Restart sequential or mental-lap practice from the course start"
+          >
+            Course start
+          </button>
+        ) : null}
         <button
           className="cue-action cue-action-primary"
           type="button"

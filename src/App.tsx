@@ -114,6 +114,7 @@ function App() {
       trial &&
       (phase === 'answering' || (settings.mode === 'mentalLap' && phase !== 'idle' && phase !== 'revealing'))
   );
+  const canRestartCourse = Boolean(video.url && canRunTrial && (settings.mode === 'sequential' || settings.mode === 'mentalLap'));
 
   useEffect(() => {
     saveSettings(settings);
@@ -207,7 +208,7 @@ function App() {
   );
 
   const beginTrial = useCallback(
-    (previousCueStart: number | null = null) => {
+    (previousCueStart: number | null = null, forcedCueStart: number | null = null) => {
       if (!video.duration || !canRunTrial) {
         setTrial(null);
         setPhase('idle');
@@ -220,7 +221,8 @@ function App() {
         duration: video.duration,
         settings: effectiveTrialSettings,
         stats: statsRef.current,
-        previousCueStart
+        previousCueStart,
+        forcedCueStart
       });
       setTrial(nextTrial);
       setWrongIds(new Set());
@@ -235,6 +237,14 @@ function App() {
     },
     [canRunTrial, effectiveTrialSettings, video.duration]
   );
+
+  const restartCourseStart = useCallback(() => {
+    if (settings.mode !== 'sequential' && settings.mode !== 'mentalLap') {
+      return;
+    }
+    beginTrial(null, Math.max(0, effectiveTrialSettings.t0));
+    setStatus({ message: 'Restarted at course start.', tone: 'neutral' });
+  }, [beginTrial, effectiveTrialSettings.t0, settings.mode]);
 
   useEffect(() => {
     if (!video.url || video.duration === null || video.error) {
@@ -636,10 +646,12 @@ function App() {
           replayEnabled={settings.replayEnabled}
           playbackRate={settings.playbackRate}
           canReveal={canRevealAnswer}
+          canRestartCourse={canRestartCourse}
           onClipEnded={handleCueEnded}
           onRequestFile={requestFile}
           onReplay={handleReplay}
           onReveal={revealAnswer}
+          onRestartCourse={restartCourseStart}
         />
         <NotesBox
           value={noteText}

@@ -11,6 +11,7 @@ export type TrialContext = {
   settings: Settings;
   stats?: Record<string, AnchorStats>;
   previousCueStart?: number | null;
+  forcedCueStart?: number | null;
   random?: Random;
 };
 
@@ -19,13 +20,17 @@ export function createTrial({
   settings,
   stats = {},
   previousCueStart = null,
+  forcedCueStart = null,
   random = Math.random
 }: TrialContext): Trial {
   const t0 = Math.max(0, settings.t0);
   const forwardGap = normalizeForwardGapRange(settings, duration);
   const cueClampGap = isVideoLongEnough(duration, settings.T, forwardGap.max) ? forwardGap.max : forwardGap.min;
   const t1 = clampT1(duration, settings.T, t0, settings.t1, cueClampGap);
-  const cueStart = pickCueStart(settings.mode, t0, t1, settings.T, forwardGap.min, stats, previousCueStart, random);
+  const cueStart =
+    forcedCueStart !== null && Number.isFinite(forcedCueStart)
+      ? roundTime(Math.min(t1, Math.max(t0, forcedCueStart)))
+      : pickCueStart(settings.mode, t0, t1, settings.T, forwardGap.min, stats, previousCueStart, random);
   const cue = clip(cueStart, settings.T);
   const gallery = createContinuationGallery({
     duration,
