@@ -9,7 +9,7 @@ describe('trialEngine', () => {
     expect(sampleUniform(2, 4, () => 0.5)).toBe(3);
   });
 
-  it('samples future continuations inside the forward-gap range', () => {
+  it('samples the correct continuation inside the forward-gap range', () => {
     let i = 0;
     const values = [0.25, 0.9, 0.2, 0.65, 0.45, 0.8, 0.1, 0.3, 0.7];
     const trial = createTrial({
@@ -18,42 +18,54 @@ describe('trialEngine', () => {
       random: () => values[i++ % values.length]
     });
 
-    const starts = trial.gallery.map((item) => item.clip.start);
-    const gaps = starts.map((start) => start - trial.cue.end);
     const correct = trial.gallery.find((item) => item.isCorrect);
+    const correctGap = (correct?.clip.start ?? 0) - trial.cue.end;
 
     expect(trial.gallery).toHaveLength(4);
     expect(trial.gallery.filter((item) => item.isCorrect)).toHaveLength(1);
-    for (const gap of gaps) {
-      expect(gap).toBeGreaterThan(0);
-      expect(gap).toBeGreaterThanOrEqual(0.999);
-      expect(gap).toBeLessThanOrEqual(4.001);
-    }
-    expect(correct?.clip.start).toBe(Math.min(...starts));
+    expect(correctGap).toBeGreaterThanOrEqual(0.999);
+    expect(correctGap).toBeLessThanOrEqual(4.001);
     expect(trial.answer.start).toBe(correct?.clip.start);
     expect(trial.answer.end - trial.answer.start).toBeCloseTo(1);
   });
 
-  it('keeps sampled gallery starts separated by the configured lapse formula', () => {
+  it('samples random-recall wrong choices away from the correct answer neighborhood', () => {
     let i = 0;
-    const values = [0, 0.03, 0.06, 0.1, 0.2, 0.35, 0.52, 0.78, 0.95, 0.4, 0.6];
-    const minForwardGap = 1;
-    const maxForwardGap = 9;
-    const count = 4;
-    const minLapse = (maxForwardGap - minForwardGap) / (2 * count);
+    const values = [0.45, 0.25, 0.1, 0.8, 0.35, 0.9, 0.6, 0.15, 0.55, 0.75, 0.95, 0.2];
     const trial = createTrial({
-      duration: 30,
-      settings: { ...defaultSettings, T: 1, N: count, minForwardGap, maxForwardGap },
+      duration: 120,
+      settings: { ...defaultSettings, mode: 'random', T: 2, N: 4, minForwardGap: 1, maxForwardGap: 4 },
       random: () => values[i++ % values.length]
     });
 
-    const starts = trial.gallery.map((item) => item.clip.start).sort((a, b) => a - b);
-    for (let index = 1; index < starts.length; index += 1) {
-      expect(starts[index] - starts[index - 1]).toBeGreaterThanOrEqual(minLapse - 0.001);
+    const correct = trial.gallery.find((item) => item.isCorrect);
+
+    expect(correct).toBeDefined();
+    for (const item of trial.gallery.filter((entry) => !entry.isCorrect)) {
+      expect(Math.abs(item.clip.start - (correct?.clip.start ?? 0))).toBeGreaterThanOrEqual(9.999);
+      expect(item.clip.start < trial.cue.start - 9.999 || item.clip.start > (correct?.clip.start ?? 0) + 9.999).toBe(true);
     }
   });
 
-  it('keeps every gallery option after the prompt when the visible min gap is zero', () => {
+  it('samples sequential-recall wrong choices from other course times', () => {
+    let i = 0;
+    const values = [0.5, 0.2, 0.85, 0.4, 0.92, 0.7, 0.15, 0.6, 0.25, 0.95];
+    const trial = createTrial({
+      duration: 150,
+      previousCueStart: 40,
+      settings: { ...defaultSettings, mode: 'sequential', T: 2, N: 4, minForwardGap: 1, maxForwardGap: 5 },
+      random: () => values[i++ % values.length]
+    });
+    const correct = trial.gallery.find((item) => item.isCorrect);
+
+    expect(trial.cueStart).toBe(43);
+    expect(correct).toBeDefined();
+    for (const item of trial.gallery.filter((entry) => !entry.isCorrect)) {
+      expect(Math.abs(item.clip.start - (correct?.clip.start ?? 0))).toBeGreaterThanOrEqual(9.999);
+    }
+  });
+
+  it('keeps the correct option after the prompt when the visible min gap is zero', () => {
     let i = 0;
     const values = [0.1, 0, 0.2, 0.5, 0.9];
     const trial = createTrial({
@@ -62,13 +74,13 @@ describe('trialEngine', () => {
       random: () => values[i++ % values.length]
     });
 
+    const correct = trial.gallery.find((item) => item.isCorrect);
+
     expect(trial.gallery).toHaveLength(3);
-    for (const item of trial.gallery) {
-      expect(item.clip.start).toBeGreaterThan(trial.cue.end);
-    }
+    expect(correct?.clip.start).toBeGreaterThan(trial.cue.end);
   });
 
-  it('allows long forward windows beyond the old ten-second limit', () => {
+  it('allows the correct continuation to use long forward windows beyond the old ten-second limit', () => {
     let i = 0;
     const values = [0, 0.9, 0.7, 0.8, 0.6, 0.4];
     const trial = createTrial({
@@ -77,11 +89,11 @@ describe('trialEngine', () => {
       random: () => values[i++ % values.length]
     });
 
-    for (const item of trial.gallery) {
-      const gap = item.clip.start - trial.cue.end;
-      expect(gap).toBeGreaterThanOrEqual(19.999);
-      expect(gap).toBeLessThanOrEqual(30.001);
-    }
+    const correct = trial.gallery.find((item) => item.isCorrect);
+    const gap = (correct?.clip.start ?? 0) - trial.cue.end;
+
+    expect(gap).toBeGreaterThanOrEqual(19.999);
+    expect(gap).toBeLessThanOrEqual(30.001);
   });
 
   it('advances sequential mode by prompt length plus the minimum forward gap when possible', () => {

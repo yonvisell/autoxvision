@@ -2,6 +2,9 @@ import { EPS, anchorTime, clampT1, clip, isVideoLongEnough, maxForwardGapLimit, 
 import type { AnchorStats, GalleryItem, Mode, Settings, Trial } from '../types';
 
 type Random = () => number;
+type TimeInterval = { start: number; end: number };
+
+const REMOTE_DISTRACTOR_GAP_SECONDS = 10;
 
 export type TrialContext = {
   duration: number;
@@ -28,6 +31,7 @@ export function createTrial({
     duration,
     T: settings.T,
     count: settings.mode === 'mentalLap' ? 1 : settings.N,
+    cueStart,
     cueEnd: cue.end,
     minGap: forwardGap.min,
     maxGap: forwardGap.max,
@@ -135,6 +139,7 @@ function createContinuationGallery({
   duration,
   T,
   count,
+  cueStart,
   cueEnd,
   minGap,
   maxGap,
@@ -143,6 +148,7 @@ function createContinuationGallery({
   duration: number;
   T: number;
   count: number;
+  cueStart: number;
   cueEnd: number;
   minGap: number;
   maxGap: number;
@@ -150,36 +156,116 @@ function createContinuationGallery({
 }): GalleryItem[] {
   const lowerStart = cueEnd + minGap;
   const upperStart = Math.max(lowerStart, Math.min(cueEnd + maxGap, duration - T));
-  const starts = sampleSpreadStarts(lowerStart, upperStart, count, random);
+  const correctStart = sampleUniform(lowerStart, upperStart, random);
 
-  const correctIndex = starts.reduce((bestIndex, start, index) => (start < starts[bestIndex] ? index : bestIndex), 0);
-  const items = starts.map((start, index) => ({
-    id: `${index === correctIndex ? 'correct' : 'future'}-${index}-${start.toFixed(3)}-${Date.now()}`,
+  const starts = [
+    { start: correctStart, isCorrect: true },
+    ...sampleRemoteDistractorStarts({
+      duration,
+      T,
+      count: count - 1,
+      cueStart,
+      correctStart,
+      random
+    }).map((start) => ({ start, isCorrect: false }))
+  ];
+
+  const items = starts.map(({ start, isCorrect }, index) => ({
+    id: `${isCorrect ? 'correct' : 'remote'}-${index}-${start.toFixed(3)}-${Date.now()}`,
     clip: clip(start, T),
-    isCorrect: index === correctIndex
+    isCorrect
   }));
 
   return shuffle(items, random);
 }
 
-function sampleSpreadStarts(lowerStart: number, upperStart: number, count: number, random: Random): number[] {
+function sampleRemoteDistractorStarts({
+  duration,
+  T,
+  count,
+  cueStart,
+  correctStart,
+  random
+}: {
+  duration: number;
+  T: number;
+  count: number;
+  cueStart: number;
+  correctStart: number;
+  random: Random;
+}): number[] {
   if (count <= 0) {
     return [];
   }
-  if (upperStart <= lowerStart) {
-    return Array.from({ length: count }, () => roundTime(lowerStart));
+
+  const sourceStart = 0;
+  const sourceEnd = Math.max(sourceStart, duration - T);
+  const idealGap = Math.max(REMOTE_DISTRACTOR_GAP_SECONDS, T * 4);
+  const gaps = uniqueDescending([
+    idealGap,
+    idealGap * 0.75,
+    idealGap * 0.5,
+    idealGap * 0.25,
+    T + EPS,
+    EPS
+  ]);
+
+  for (const gap of gaps) {
+    const intervals = remoteDistractorIntervals(sourceStart, sourceEnd, cueStart, correctStart, gap);
+    const starts = sampleStartsFromIntervals(intervals, count, Math.max(T, gap / 2), random);
+    if (starts.length === count) {
+      return starts;
+    }
   }
 
-  const span = upperStart - lowerStart;
-  const minLapse = span / (2 * count);
-  const starts: number[] = [];
-  const maxAttempts = Math.max(120, count * 80);
-  let attempts = 0;
+  const relaxed = remoteDistractorIntervals(sourceStart, sourceEnd, cueStart, correctStart, EPS);
+  const spread = spreadStartsAcrossIntervals(relaxed, count);
+  if (spread.length > 0) {
+    return spread;
+  }
 
+  return Array.from({ length: count }, (_, index) => {
+    const fraction = count === 1 ? 0 : index / (count - 1);
+    return roundTime(sourceStart + (sourceEnd - sourceStart) * fraction);
+  });
+}
+
+function uniqueDescending(values: number[]): number[] {
+  return [...new Set(values.map((value) => roundTime(Math.max(EPS, value))))].sort((a, b) => b - a);
+}
+
+function remoteDistractorIntervals(
+  sourceStart: number,
+  sourceEnd: number,
+  cueStart: number,
+  correctStart: number,
+  gap: number
+): TimeInterval[] {
+  const beforeEnd = Math.min(sourceEnd, cueStart - gap);
+  const afterStart = Math.max(sourceStart, correctStart + gap);
+  return [
+    { start: sourceStart, end: beforeEnd },
+    { start: afterStart, end: sourceEnd }
+  ].filter((interval) => interval.end + EPS >= interval.start);
+}
+
+function sampleStartsFromIntervals(
+  intervals: TimeInterval[],
+  count: number,
+  minSeparation: number,
+  random: Random
+): number[] {
+  if (count <= 0 || intervals.length === 0) {
+    return [];
+  }
+
+  const starts: number[] = [];
+  const maxAttempts = Math.max(160, count * 100);
+  let attempts = 0;
   while (starts.length < count && attempts < maxAttempts) {
     attempts += 1;
-    const candidate = sampleUniform(lowerStart, upperStart, random);
-    if (starts.every((start) => Math.abs(start - candidate) + EPS >= minLapse)) {
+    const candidate = sampleFromIntervals(intervals, random);
+    if (starts.every((start) => Math.abs(start - candidate) + EPS >= minSeparation)) {
       starts.push(candidate);
     }
   }
@@ -188,7 +274,44 @@ function sampleSpreadStarts(lowerStart: number, upperStart: number, count: numbe
     return starts;
   }
 
-  return Array.from({ length: count }, (_, index) => roundTime(lowerStart + (span * (index + 0.5)) / count));
+  const spread = spreadStartsAcrossIntervals(intervals, count);
+  return spread.length === count ? spread : starts;
+}
+
+function sampleFromIntervals(intervals: TimeInterval[], random: Random): number {
+  const lengths = intervals.map((interval) => Math.max(EPS, interval.end - interval.start));
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  let pick = random() * total;
+  for (let index = 0; index < intervals.length; index += 1) {
+    pick -= lengths[index];
+    if (pick <= 0) {
+      const interval = intervals[index];
+      const width = Math.max(0, interval.end - interval.start);
+      return sampleUniform(interval.start, interval.start + width, random);
+    }
+  }
+  return roundTime(intervals[intervals.length - 1].end);
+}
+
+function spreadStartsAcrossIntervals(intervals: TimeInterval[], count: number): number[] {
+  if (count <= 0 || intervals.length === 0) {
+    return [];
+  }
+
+  const lengths = intervals.map((interval) => Math.max(EPS, interval.end - interval.start));
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  return Array.from({ length: count }, (_, index) => {
+    let target = ((index + 0.5) * total) / count;
+    for (let intervalIndex = 0; intervalIndex < intervals.length; intervalIndex += 1) {
+      target -= lengths[intervalIndex];
+      if (target <= 0) {
+        const interval = intervals[intervalIndex];
+        const offset = Math.max(0, lengths[intervalIndex] + target);
+        return roundTime(Math.min(interval.end, interval.start + offset));
+      }
+    }
+    return roundTime(intervals[intervals.length - 1].end);
+  });
 }
 
 export function shuffle<T>(items: T[], random: Random = Math.random): T[] {

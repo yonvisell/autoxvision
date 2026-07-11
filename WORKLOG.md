@@ -99,6 +99,11 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Status: Complete.
 - Notes: Mental-lap reveal now preserves the previously computed answer end time but starts playback at prompt end minus 20% of prompt length, removing the dead source-time gap while retaining the planned answer endpoint. Moved instructions and hotkeys into a single very small fixed bottom overlay line, with current instruction/status on the left and hotkeys on the right.
 
+### Slice 15 — Remote distractors and full-sequence reveal
+
+- Status: Complete.
+- Notes: Random and sequential recall now keep the correct continuation in the configured forward window, but sample wrong alternatives from remote course times before the prompt neighborhood or well after the correct answer, with graceful fallback for very short videos. In random and sequential modes, a correct reveal now plays continuously from prompt start through the end of the correct continuation instead of playing only the answer clip.
+
 ## Verification log
 
 Commands run:
@@ -260,6 +265,19 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev -- --host 127.0.0.1
 # Result: Vite ready at http://127.0.0.1:5173/ and left running after handoff.
+
+# Remote distractors / full-sequence reveal revision:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 20 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
 ```
 
 Visual inspection:
@@ -284,6 +302,7 @@ Visual inspection:
 - Inline-control checks: Verified Advanced is gone; Max gap defaults to 50s before file load with a 180s slider cap; short test video clamps Max gap to video duration minus prompt duration; gallery starts remain after prompt end, inside the effective forward window, and separated by the computed minimum lapse; gallery instruction overlays inside the gallery strip; prompt-gallery vertical gap is compact; Space and the Replay button replay the prompt; mental-lap auto-collapses controls, notes, and gallery into a compact rail; mental-lap does not automatically replay after waiting; and Enter reveals the answer after mental replay.
 - Startup/speed checks: Verified controls stay open on first load when saved settings are mental-lap; the empty prompt panel opens the file chooser; prompt max is 26s, choice-wait max is 4s, and unloaded Max gap cap is 234s; Speed slider has min 0.25, max 10, default 1; a 2x speed setting reaches both the prompt video and gallery videos; and `P` reveals the answer in mental-lap mode.
 - Mental-lap overlap checks: Verified `P` reveal begins before the prompt end by the requested overlap window while the unit test preserves the previously computed answer end time. Verified the fixed bottom help line is at the window bottom, under 16px tall, and contains current instruction/status text plus hotkeys.
+- Remote distractor checks: Verified in local Chrome with ignored `AAXLPM1.MOV` that random-mode wrong starts were roughly 35s, 133s, and 221s away from the correct answer; sequential-mode wrong starts were roughly 24s, 103s, and 343s away. In both modes, selecting the correct tile entered reveal mode with the main video current time before the correct answer start, confirming prompt-through-answer playback.
 
 ## Remaining limitations
 
@@ -300,4 +319,4 @@ List only real limitations that remain at handoff.
 - How to run: `npm install`, then `npm run dev` with Node >=20; current dev server is running at `http://127.0.0.1:5173/`.
 - How to build: `npm run build`.
 - Tests: `npm run lint`, `npm test`, and `npm run build` passed.
-- Notes for Yon: Shortcut help is visible in the controls area. Local videos stay out of git via `.gitignore`.
+- Notes for Yon: Shortcut help is visible in the bottom overlay line. Local videos stay out of git via `.gitignore`.

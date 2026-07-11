@@ -96,7 +96,19 @@ function App() {
   const canRunTrial = Boolean(
     video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, effectiveMinForwardGap) && !video.error
   );
-  const currentClip = phase === 'revealing' ? trial?.answer ?? null : trial?.cue ?? null;
+  const revealClip = useMemo(() => {
+    if (!trial) {
+      return null;
+    }
+    if (settings.mode === 'random' || settings.mode === 'sequential') {
+      return {
+        start: trial.cue.start,
+        end: trial.answer.end
+      };
+    }
+    return trial.answer;
+  }, [settings.mode, trial]);
+  const currentClip = phase === 'revealing' ? revealClip : trial?.cue ?? null;
   const canRevealAnswer = Boolean(
     video.url &&
       trial &&
@@ -394,7 +406,10 @@ function App() {
             previous.map((miss) => (miss.id === activeMissId ? { ...miss, resolved: true } : miss))
           );
         }
-        setStatus({ message: activeMissId ? 'Miss solved. Watch the answer clip.' : 'Correct. Watch the answer clip.', tone: 'good' });
+        setStatus({
+          message: activeMissId ? 'Miss solved. Watch prompt through answer.' : 'Correct. Watch prompt through answer.',
+          tone: 'good'
+        });
         timeoutRef.current = window.setTimeout(() => {
           setPhase('revealing');
         }, correctDelayMs);
