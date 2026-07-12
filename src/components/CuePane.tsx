@@ -4,16 +4,18 @@ import type { Clip } from '../types';
 type CuePaneProps = {
   videoUrl: string | null;
   clip: Clip | null;
-  phase: 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing';
+  phase: 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing' | 'nextReady';
   replayEnabled: boolean;
   playbackRate: number;
   canReveal: boolean;
   canRestartCourse: boolean;
+  canStartNext: boolean;
   onClipEnded: () => void;
   onRequestFile: () => void;
   onReplay: () => void;
   onReveal: () => void;
   onRestartCourse: () => void;
+  onStartNext: () => void;
 };
 
 export function CuePane({
@@ -24,18 +26,20 @@ export function CuePane({
   playbackRate,
   canReveal,
   canRestartCourse,
+  canStartNext,
   onClipEnded,
   onRequestFile,
   onReplay,
   onReveal,
-  onRestartCourse
+  onRestartCourse,
+  onStartNext
 }: CuePaneProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const endedRef = useRef(onClipEnded);
   const [playError, setPlayError] = useState('');
   const showVideo = Boolean(videoUrl && clip && (phase === 'cuePlaying' || phase === 'revealing'));
   const isReveal = phase === 'revealing';
-  const blackoutText = phase === 'idle' ? 'Choose a video to begin' : '';
+  const blackoutText = phase === 'idle' ? 'Choose a video to begin' : phase === 'nextReady' ? 'Click for next prompt' : '';
 
   useEffect(() => {
     endedRef.current = onClipEnded;
@@ -96,6 +100,10 @@ export function CuePane({
   const handleClick = () => {
     if (!videoUrl) {
       onRequestFile();
+      return;
+    }
+    if (phase === 'nextReady' && canStartNext) {
+      onStartNext();
       return;
     }
     if (phase === 'answering' && replayEnabled) {

@@ -2,6 +2,7 @@ import type { Clip } from '../types';
 
 export const EPS = 1 / 30;
 export const MAX_FORWARD_GAP_SECONDS = 234;
+export const MAX_RESPONSE_GAP_SECONDS = 60;
 
 export function roundTime(value: number, places = 3): number {
   const scale = 10 ** places;

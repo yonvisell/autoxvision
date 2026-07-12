@@ -5,7 +5,7 @@ import { Gallery } from './components/Gallery';
 import { NotesBox } from './components/NotesBox';
 import { ScoreBadge } from './components/ScoreBadge';
 import { StatusLine } from './components/StatusLine';
-import { isVideoLongEnough, maxForwardGapLimit } from './lib/clipMath';
+import { isVideoLongEnough, MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit } from './lib/clipMath';
 import { applyPreset, defaultSettings, markCustom } from './lib/presets';
 import {
   loadAnnotations,
@@ -26,7 +26,7 @@ import { savedPresetPayload } from './lib/presets';
 import { nearestAnnotation, upsertAnnotation } from './lib/annotations';
 import type { AnchorStats, Annotation, GalleryItem, Settings, Trial } from './types';
 
-type Phase = 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing';
+type Phase = 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing' | 'nextReady';
 type VideoState = {
   file: File | null;
   url: string | null;
@@ -81,7 +81,7 @@ function App() {
   const timeoutRef = useRef<number | null>(null);
   const statsRef = useRef<Record<string, AnchorStats>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const forwardGapLimit = maxForwardGapLimit(video.duration, settings.T);
+  const forwardGapLimit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, settings.T));
   const effectiveMinForwardGap = Math.min(settings.minForwardGap, forwardGapLimit);
   const effectiveMaxForwardGap = Math.min(Math.max(settings.maxForwardGap, effectiveMinForwardGap), forwardGapLimit);
   const effectiveTrialSettings = useMemo<Settings>(
@@ -124,7 +124,7 @@ function App() {
     if (video.duration === null) {
       return;
     }
-    const limit = maxForwardGapLimit(video.duration, settings.T);
+    const limit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, settings.T));
     const minForwardGap = Math.min(settings.minForwardGap, limit);
     const maxForwardGap = Math.min(Math.max(settings.maxForwardGap, minForwardGap), limit);
     if (minForwardGap !== settings.minForwardGap || maxForwardGap !== settings.maxForwardGap) {
@@ -246,6 +246,13 @@ function App() {
     setStatus({ message: 'Restarted at course start.', tone: 'neutral' });
   }, [beginTrial, effectiveTrialSettings.t0, settings.mode]);
 
+  const startNextPrompt = useCallback(() => {
+    if (!trial && lastCueStart === null) {
+      return;
+    }
+    beginTrial(trial?.cueStart ?? lastCueStart);
+  }, [beginTrial, lastCueStart, trial]);
+
   useEffect(() => {
     if (!video.url || video.duration === null || video.error) {
       return;
@@ -360,13 +367,18 @@ function App() {
       );
     }
     if (phase === 'revealing') {
-      timeoutRef.current = window.setTimeout(() => {
-        beginTrial(trial?.cueStart ?? null);
-      }, 120);
+      setPhase('nextReady');
+      setChoicesReady(false);
+      setGallerySequenceIndex(null);
+      setStatus({ message: 'Click the prompt or press Space/R for the next prompt.', tone: 'neutral' });
     }
   };
 
   const handleReplay = () => {
+    if (phase === 'nextReady') {
+      startNextPrompt();
+      return;
+    }
     if (!trial || !settings.replayEnabled || phase === 'idle' || phase === 'cueDelay' || phase === 'cuePlaying') {
       return;
     }
@@ -603,6 +615,9 @@ function App() {
     if (phase === 'revealing') {
       return 'Correct answer is highlighted.';
     }
+    if (phase === 'nextReady') {
+      return 'Click the prompt or press Space/R for the next prompt.';
+    }
     return '';
   }, [choicesReady, phase, settings.galleryDelay, settings.galleryPlayback, trial]);
   const bottomInstruction =
@@ -647,11 +662,13 @@ function App() {
           playbackRate={settings.playbackRate}
           canReveal={canRevealAnswer}
           canRestartCourse={canRestartCourse}
+          canStartNext={phase === 'nextReady'}
           onClipEnded={handleCueEnded}
           onRequestFile={requestFile}
           onReplay={handleReplay}
           onReveal={revealAnswer}
           onRestartCourse={restartCourseStart}
+          onStartNext={startNextPrompt}
         />
         <NotesBox
           value={noteText}
@@ -713,7 +730,7 @@ function App() {
       </section>
       <div className="bottom-help" aria-label="Instructions and hotkeys">
         <span>{bottomInstruction}</span>
-        <span>1-8 choose | Space/R replay | P/Enter answer | M mute</span>
+        <span>1-8 choose | Space/R prompt/next | P/Enter answer | M mute</span>
       </div>
     </main>
   );

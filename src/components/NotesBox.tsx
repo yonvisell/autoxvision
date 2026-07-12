@@ -34,6 +34,7 @@ export function NotesBox({ value, disabled, cueStart, collapsed, onChange, onTog
         placeholder="Apex, cone wall, next gate."
         onChange={(event) => onChange(event.currentTarget.value)}
       />
+      <div className="notes-hotkeys">Keys: 1-8 choose | Space/R prompt or next | P/Enter answer | M mute</div>
     </section>
   );
 }

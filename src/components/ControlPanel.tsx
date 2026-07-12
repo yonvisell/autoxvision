@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { GalleryPlayback, Mode, Preset, Settings } from '../types';
 
 type ControlPanelProps = {
@@ -29,6 +30,12 @@ export function ControlPanel({
 }: ControlPanelProps) {
   const applyCustom = (patch: Partial<Settings>) => onSettingsChange(patch);
   const forwardGapMax = Math.max(0, maxForwardGapLimit);
+  const minGapPercent = forwardGapMax > 0 ? (Math.min(settings.minForwardGap, forwardGapMax) / forwardGapMax) * 100 : 0;
+  const maxGapPercent = forwardGapMax > 0 ? (Math.min(settings.maxForwardGap, forwardGapMax) / forwardGapMax) * 100 : 0;
+  const responseGapStyle = {
+    '--gap-min': `${minGapPercent}%`,
+    '--gap-max': `${maxGapPercent}%`
+  } as CSSProperties;
   const setMinForwardGap = (value: number) => {
     const minForwardGap = Math.min(forwardGapMax, Math.max(0, value));
     applyCustom({
@@ -212,10 +219,16 @@ export function ControlPanel({
         </div>
       </div>
 
-      <div className="range-row">
-        <label title="Earliest source-time gap between prompt end and sampled continuation starts">
-          <span>Min gap <strong>{settings.minForwardGap.toFixed(2)}s</strong></span>
+      <div
+        className="response-gap-control"
+        title={`Random source-time gap between prompt end and the correct response start. Slider max is 60s; current video cap is ${forwardGapMax.toFixed(2)}s.`}
+      >
+        <span>
+          Response gap <strong>{settings.minForwardGap.toFixed(2)}-{settings.maxForwardGap.toFixed(2)}s</strong>
+        </span>
+        <div className="dual-range" style={responseGapStyle}>
           <input
+            aria-label="Minimum response gap"
             type="range"
             min="0"
             max={forwardGapMax}
@@ -224,10 +237,8 @@ export function ControlPanel({
             disabled={disabled || forwardGapMax <= 0}
             onChange={(event) => setMinForwardGap(Number(event.currentTarget.value))}
           />
-        </label>
-        <label title={`Latest source-time gap. Capped at the smaller of 234s or video end minus clip length (${forwardGapMax.toFixed(2)}s now).`}>
-          <span>Max gap <strong>{settings.maxForwardGap.toFixed(2)}s</strong></span>
           <input
+            aria-label="Maximum response gap"
             type="range"
             min="0"
             max={forwardGapMax}
@@ -236,7 +247,7 @@ export function ControlPanel({
             disabled={disabled || forwardGapMax <= 0}
             onChange={(event) => setMaxForwardGap(Number(event.currentTarget.value))}
           />
-        </label>
+        </div>
       </div>
 
       <div className="range-row">
