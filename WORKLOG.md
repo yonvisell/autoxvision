@@ -119,6 +119,11 @@ Record concise decisions here, especially when resolving ambiguity without askin
 - Status: Complete.
 - Notes: Replaced separate min/max response-gap sliders with a single dual-handle `Response gap` control capped at 60s. After a correct reveal finishes, the app now waits on a black prompt pane until the user clicks the pane or presses Space/R for the next prompt. Added a concise hotkey line under the notes field so it collapses with the notes panel, and preserved the prior committed build as a static snapshot on `127.0.0.1:5173` while running the new version on `127.0.0.1:5174`.
 
+### Slice 19 — Gallery sequence lockout fix
+
+- Status: Complete.
+- Notes: Removed the automatic prompt replay that fired after one-by-one gallery playback completed. That replay could leave the user in a black cue/playback state with choices disabled if browser autoplay did not proceed cleanly. The gallery now remains answerable after its one-by-one pass; the user can explicitly replay the prompt or select an answer.
+
 ## Verification log
 
 Commands run:
@@ -340,6 +345,23 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run dev -- --host 127.0.0.1 --port 5174
 # Result: Vite ready at http://127.0.0.1:5174/ and left running after handoff.
+
+# Gallery sequence lockout fix:
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js install --no-audit --no-fund
+# Result: passed, up to date.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run lint
+# Result: passed.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js test
+# Result: passed, 4 test files / 22 tests.
+
+PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
+  node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
+# Result: passed, Vite production build written to dist/.
 ```
 
 Visual inspection:
@@ -368,6 +390,7 @@ Visual inspection:
 - Course-start restart checks: Verified in local Chrome with ignored `AAXLPM1.MOV` that `Course start` appears once in sequential and mental-lap modes, is hidden in random mode, and restarts playback near `Start (s) = 5` when that active course start is configured.
 - Strict exclusion checks: Verified in local Chrome with ignored `AAXLPM1.MOV` that a random-mode trial with `T = 2` had forbidden wrong-choice interval `185.69s-195.09s`; all wrong gallery starts were outside that interval.
 - Response-gap / manual-next checks: Verified in local Chrome with ignored `AAXLPM1.MOV` on `127.0.0.1:5174` that the response-gap control has two handles with max `60`, a configured 5-12s response gap sampled a correct start 10.6s after prompt end, notes show the collapsible hotkey line, a correct reveal stops at `Click for next prompt`, Space/R starts the next prompt, and clicking the cue pane also starts the next prompt. Screenshots: `/tmp/autoxvision-5174-response-gap.png` and `/tmp/autoxvision-5174-response-gap-control.png`.
+- Gallery sequence lockout checks: Verified in local Chrome with ignored `AAXLPM1.MOV` on `127.0.0.1:5174` that after one-by-one gallery playback finishes, gallery tiles remain enabled, no prompt autoplay/blackout begins, and the correct-answer manual-next flow still starts the next prompt with Space.
 
 ## Remaining limitations
 

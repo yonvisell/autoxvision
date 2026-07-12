@@ -537,14 +537,8 @@ function App() {
         await wait(settings.galleryDelay * 1000);
       }
 
-      if (active && settings.replayEnabled) {
-        setChoicesReady(false);
-        setPhase('cueDelay');
-        setStatus({ message: '', tone: 'neutral' });
-        await wait(cueDelayMs);
-        if (active) {
-          setPhase('cuePlaying');
-        }
+      if (active) {
+        setGallerySequenceIndex(null);
       }
     };
 
@@ -553,7 +547,7 @@ function App() {
     return () => {
       active = false;
     };
-  }, [phase, settings.T, settings.galleryDelay, settings.galleryPlayback, settings.mode, settings.playbackRate, settings.replayEnabled, trial]);
+  }, [phase, settings.T, settings.galleryDelay, settings.galleryPlayback, settings.mode, settings.playbackRate, trial]);
 
   const resetScore = () => {
     setScore(0);
