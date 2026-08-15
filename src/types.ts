@@ -29,6 +29,7 @@ export type Annotation = {
 };
 
 export type Mode = 'random' | 'sequential' | 'weakSpots' | 'mentalLap';
+export type MentalLapOrder = 'sequential' | 'random';
 export type Preset = 'custom' | 'saved' | 'encoding' | 'learning' | 'performance' | 'pressure';
 export type GalleryPlayback = 'sequence' | 'hover' | 'allLoop';
 
@@ -36,6 +37,7 @@ export type Settings = {
   T: number;
   N: number;
   mode: Mode;
+  mentalLapOrder: MentalLapOrder;
   preset: Preset;
   galleryPlayback: GalleryPlayback;
   galleryDelay: number;

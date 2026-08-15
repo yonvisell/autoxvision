@@ -12,6 +12,10 @@ npm run dev
 
 Open the localhost URL printed by Vite.
 
+Public app: <https://yonvisell.github.io/autoxvision/>
+
+The in-app `?` link opens the complete usage instructions.
+
 ## Basic use
 
 1. Choose a local video file (`.mov`, `.mp4`, `.m4v`, `.webm`, or any browser-playable video).

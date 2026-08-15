@@ -24,46 +24,48 @@ export function createTrial({
   random = Math.random
 }: TrialContext): Trial {
   const t0 = Math.max(0, settings.t0);
-  const forwardGap = normalizeForwardGapRange(settings, duration);
+  const forwardGap = settings.mode === 'mentalLap' ? { min: 0, max: 0 } : normalizeForwardGapRange(settings, duration);
   const cueClampGap = isVideoLongEnough(duration, settings.T, forwardGap.max) ? forwardGap.max : forwardGap.min;
   const t1 = clampT1(duration, settings.T, t0, settings.t1, cueClampGap);
   const cueStart =
     forcedCueStart !== null && Number.isFinite(forcedCueStart)
       ? roundTime(Math.min(t1, Math.max(t0, forcedCueStart)))
-      : pickCueStart(settings.mode, t0, t1, settings.T, forwardGap.min, stats, previousCueStart, random);
+      : pickCueStart(settings.mode, settings.mentalLapOrder, t0, t1, settings.T, forwardGap.min, stats, previousCueStart, random);
   const cue = clip(cueStart, settings.T);
-  const gallery = createContinuationGallery({
-    duration,
-    T: settings.T,
-    count: settings.mode === 'mentalLap' ? 1 : settings.N,
-    cueStart,
-    cueEnd: cue.end,
-    minGap: forwardGap.min,
-    maxGap: forwardGap.max,
-    random
-  });
+  const gallery =
+    settings.mode === 'mentalLap'
+      ? [
+          {
+            id: `correct-mental-${cue.end.toFixed(3)}-${Date.now()}`,
+            clip: clip(cue.end, settings.T),
+            isCorrect: true
+          }
+        ]
+      : createContinuationGallery({
+          duration,
+          T: settings.T,
+          count: settings.N,
+          cueStart,
+          cueEnd: cue.end,
+          minGap: forwardGap.min,
+          maxGap: forwardGap.max,
+          random
+        });
   const baseAnswer = gallery.find((item) => item.isCorrect)?.clip ?? gallery[0].clip;
-  const answer = settings.mode === 'mentalLap' ? mentalLapRevealClip(cue.end, settings.T, baseAnswer.end) : baseAnswer;
 
   return {
     id: `trial-${cueStart.toFixed(3)}-${Date.now()}-${Math.floor(random() * 1_000_000)}`,
     cue,
-    answer,
+    answer: baseAnswer,
     cueStart: roundTime(cueStart),
     createdAt: Date.now(),
     gallery
   };
 }
 
-function mentalLapRevealClip(cueEnd: number, T: number, answerEnd: number) {
-  return {
-    start: roundTime(Math.max(0, cueEnd - T * 0.2)),
-    end: roundTime(answerEnd)
-  };
-}
-
 function pickCueStart(
   mode: Mode,
+  mentalLapOrder: Settings['mentalLapOrder'],
   t0: number,
   t1: number,
   T: number,
@@ -72,9 +74,9 @@ function pickCueStart(
   previousCueStart: number | null,
   random: Random
 ): number {
-  if (mode === 'sequential' || mode === 'mentalLap') {
+  if (mode === 'sequential' || (mode === 'mentalLap' && mentalLapOrder === 'sequential')) {
     if (previousCueStart !== null && Number.isFinite(previousCueStart)) {
-      const next = previousCueStart + T + minForwardGap;
+      const next = previousCueStart + T + (mode === 'mentalLap' ? 0 : minForwardGap);
       if (next <= t1) {
         return roundTime(next);
       }

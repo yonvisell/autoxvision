@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0e13" />
+    <meta name="description" content="Instructions for the AutoxVision course-walk recall trainer." />
+    <title>AutoxVision instructions</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0a0e13;
+        color: #e9eef5;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        background: linear-gradient(180deg, #111a24 0%, #090d12 42%, #070a0e 100%);
+      }
+
+      main {
+        width: min(880px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 52px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid #263343;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .cone {
+        width: 0;
+        height: 0;
+        border-left: 10px solid transparent;
+        border-right: 10px solid transparent;
+        border-bottom: 28px solid #ff842b;
+        filter: drop-shadow(0 3px 0 #f6c15b);
+      }
+
+      h1, h2 { letter-spacing: 0; }
+      h1 { margin: 0; font-size: 1.45rem; }
+      h2 { margin: 0 0 8px; font-size: 1rem; color: #ffffff; }
+      p { margin: 0 0 10px; }
+
+      a { color: #ffb56e; }
+
+      .back {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 5px 10px;
+        border: 1px solid #34465a;
+        border-radius: 6px;
+        background: #111a24;
+        color: #e9eef5;
+        text-decoration: none;
+        font-size: 0.78rem;
+      }
+
+      .intro {
+        max-width: 720px;
+        margin: 18px 0 4px;
+        color: #b9c4d1;
+        line-height: 1.55;
+      }
+
+      .sections {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 28px;
+        margin-top: 8px;
+      }
+
+      section {
+        padding: 18px 0;
+        border-bottom: 1px solid #202b38;
+      }
+
+      ol, ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
+        color: #c1cbd7;
+        line-height: 1.5;
+      }
+
+      li + li { margin-top: 5px; }
+      strong { color: #f2f6fa; }
+      code { color: #ffd2a5; font-size: 0.88em; }
+
+      dl {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 7px 14px;
+        margin: 10px 0 0;
+        color: #c1cbd7;
+        line-height: 1.45;
+      }
+
+      dt { color: #f0f4f8; font-weight: 650; }
+      dd { margin: 0; }
+
+      .privacy {
+        color: #9ddfb9;
+      }
+
+      @media (max-width: 700px) {
+        .sections { grid-template-columns: 1fr; }
+        header { align-items: flex-start; }
+        dl { grid-template-columns: 1fr; gap: 2px; }
+        dd + dt { margin-top: 7px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand"><span class="cone" aria-hidden="true"></span><h1>AutoxVision instructions</h1></div>
+        <a class="back" href="./">Return to app</a>
+      </header>
+
+      <p class="intro">
+        AutoxVision is a temporal-recall trainer for first-person autocross course-walk video. It presents a prompt from the source video, hides it, and asks for the continuation. All processing and saved practice data remain in the browser.
+      </p>
+
+      <div class="sections">
+        <div>
+          <section>
+            <h2>Start a session</h2>
+            <ol>
+              <li>Select <strong>Video</strong>, then choose a browser-playable local course video.</li>
+              <li>Set the prompt duration, number of choices, playback speed, and session mode.</li>
+              <li>Watch the prompt once. After the blackout and choice wait, select the continuation.</li>
+              <li>After the correct reveal, click the prompt pane or press <code>Space</code> or <code>R</code> for the next trial.</li>
+            </ol>
+          </section>
+
+          <section>
+            <h2>Recall modes</h2>
+            <dl>
+              <dt>Random recall</dt><dd>Samples an independent prompt time for each new trial.</dd>
+              <dt>Sequential recall</dt><dd>Advances through the course in source-time order.</dd>
+              <dt>Weak spots</dt><dd>Uses random sampling until enough history exists, then favors slower or missed prompt locations.</dd>
+              <dt>Mental lap</dt><dd>Hides the gallery. Run the continuation mentally, then use <strong>Show answer</strong>. Sequential order advances by one prompt duration; Random starts independently resamples each trial.</dd>
+            </dl>
+          </section>
+
+          <section>
+            <h2>Timing</h2>
+            <ul>
+              <li><strong>Prompt</strong> sets duration <code>T</code> for prompt and continuation clips.</li>
+              <li><strong>Response gap</strong> sets the allowed source-time interval between prompt end and the correct gallery continuation in recall modes.</li>
+              <li>Wrong choices are sampled outside the protected prompt-to-answer interval.</li>
+              <li>In mental lap, the continuation is immediate and has the same duration as the prompt. Show answer plays the continuous prompt-plus-continuation sequence.</li>
+              <li><strong>Start</strong> and <strong>End</strong> restrict the source-time region used for prompt starts.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Gallery playback</h2>
+            <dl>
+              <dt>One-by-one</dt><dd>Plays each choice separately with black frames between choices.</dd>
+              <dt>Hover</dt><dd>Plays a choice while its tile is hovered or keyboard-focused.</dd>
+              <dt>All play</dt><dd>Loops all choices simultaneously.</dd>
+            </dl>
+            <p>Selecting a tile always submits that answer. Incorrect choices remain available for another attempt.</p>
+          </section>
+        </div>
+
+        <div>
+          <section>
+            <h2>Prompt controls</h2>
+            <dl>
+              <dt>Replay prompt</dt><dd>Replays the current prompt when Replay is enabled.</dd>
+              <dt>Show answer</dt><dd>Reveals the correct continuation. It is available without a gallery choice in mental lap.</dd>
+              <dt>Course start</dt><dd>Restarts sequential recall or mental-lap practice at the configured Start time.</dd>
+            </dl>
+          </section>
+
+          <section>
+            <h2>Controls and presets</h2>
+            <ul>
+              <li><strong>Choice wait</strong> sets the blackout interval before choices play.</li>
+              <li><strong>Speed</strong> applies to prompt, gallery, and reveal playback.</li>
+              <li><strong>Replay</strong> permits prompt replay while answering.</li>
+              <li><strong>Sound</strong> enables correct and incorrect feedback tones.</li>
+              <li>Controls that do not apply to the selected session mode remain visible but are disabled and greyed out.</li>
+              <li>Built-in presets set related controls together. Any direct edit changes the preset to Custom. <strong>Save preset</strong> stores one reusable local preset.</li>
+              <li>Drag the horizontal divider to resize prompt and gallery. Notes and controls can be collapsed horizontally.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Feedback, history, and notes</h2>
+            <ul>
+              <li>A correct answer adds one point, gives green feedback, and plays the prompt-through-answer reveal.</li>
+              <li>An incorrect answer subtracts one point, marks the selected tile red, and keeps the trial active.</li>
+              <li>Miss history stores recent incorrect trials for retry. Selecting a miss restores that trial without changing the score again.</li>
+              <li>Notes autosave locally near the current prompt time. High scores, settings, and weak-spot statistics also persist in local browser storage.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Keyboard controls</h2>
+            <dl>
+              <dt><code>1</code>-<code>8</code></dt><dd>Select the corresponding gallery choice.</dd>
+              <dt><code>Space</code> or <code>R</code></dt><dd>Replay the prompt, or start the next prompt after a reveal.</dd>
+              <dt><code>P</code> or <code>Enter</code></dt><dd>Show the answer when reveal is available.</dd>
+              <dt><code>M</code></dt><dd>Toggle feedback sound.</dd>
+            </dl>
+          </section>
+
+          <section>
+            <h2>Privacy and compatibility</h2>
+            <p class="privacy"><strong>The selected video is not uploaded.</strong> The browser reads it through a temporary local object URL.</p>
+            <p>Playback depends on the codecs supported by the current browser. MP4/H.264 is broadly supported; MOV playback varies with its contained codec. A decode failure is reported in the app.</p>
+            <p>Reloading or closing the page clears the selected file reference. Select the video again to continue; locally saved settings, scores, and notes remain available.</p>
+          </section>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

@@ -84,6 +84,7 @@ function App() {
   const forwardGapLimit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, settings.T));
   const effectiveMinForwardGap = Math.min(settings.minForwardGap, forwardGapLimit);
   const effectiveMaxForwardGap = Math.min(Math.max(settings.maxForwardGap, effectiveMinForwardGap), forwardGapLimit);
+  const requiredForwardGap = settings.mode === 'mentalLap' ? 0 : effectiveMinForwardGap;
   const effectiveTrialSettings = useMemo<Settings>(
     () => ({
       ...settings,
@@ -94,13 +95,13 @@ function App() {
   );
 
   const canRunTrial = Boolean(
-    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, effectiveMinForwardGap) && !video.error
+    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, requiredForwardGap) && !video.error
   );
   const revealClip = useMemo(() => {
     if (!trial) {
       return null;
     }
-    if (settings.mode === 'random' || settings.mode === 'sequential') {
+    if (settings.mode === 'random' || settings.mode === 'sequential' || settings.mode === 'mentalLap') {
       return {
         start: trial.cue.start,
         end: trial.answer.end
@@ -257,7 +258,7 @@ function App() {
     if (!video.url || video.duration === null || video.error) {
       return;
     }
-    if (!isVideoLongEnough(video.duration, settings.T, effectiveMinForwardGap)) {
+    if (!isVideoLongEnough(video.duration, settings.T, requiredForwardGap)) {
       setTrial(null);
       setPhase('idle');
       setStatus({ message: 'Video is too short for the current prompt length and minimum forward gap.', tone: 'warn' });
@@ -268,7 +269,7 @@ function App() {
     beginTrial,
     settings.T,
     settings.N,
-    effectiveMinForwardGap,
+    requiredForwardGap,
     settings.minForwardGap,
     settings.mode,
     settings.t0,
@@ -645,6 +646,9 @@ function App() {
           <span className="cone-mark" aria-hidden="true" />
           <h1>AutoxVision</h1>
         </div>
+        <a className="help-link" href="./help.html" target="_blank" rel="noreferrer" title="Open instructions" aria-label="Open instructions">
+          ?
+        </a>
       </header>
 
       <section className="main-stage">

@@ -173,18 +173,32 @@ describe('trialEngine', () => {
     expect(trial.cueStart).toBe(3);
   });
 
-  it('starts mental-lap reveal before prompt end while preserving the computed answer end', () => {
+  it('makes the mental-lap continuation immediate and equal in length to the prompt', () => {
     const trial = createTrial({
       duration: 30,
       settings: { ...defaultSettings, mode: 'mentalLap', T: 2, minForwardGap: 1, maxForwardGap: 3 },
       random: () => 0.5
     });
-    const baseAnswer = trial.gallery.find((item) => item.isCorrect)?.clip;
+    expect(trial.answer.start).toBe(trial.cue.end);
+    expect(trial.answer.end - trial.answer.start).toBe(trial.cue.end - trial.cue.start);
+  });
 
-    expect(baseAnswer).toBeDefined();
-    expect(trial.answer.end).toBe(baseAnswer?.end);
-    expect(trial.answer.start).toBeCloseTo(trial.cue.end - 0.4, 3);
-    expect(trial.answer.start).toBeLessThan(trial.cue.end);
+  it('supports sequential and random mental-lap prompt progression', () => {
+    const sequential = createTrial({
+      duration: 40,
+      previousCueStart: 10,
+      settings: { ...defaultSettings, mode: 'mentalLap', mentalLapOrder: 'sequential', T: 2 },
+      random: () => 0.8
+    });
+    const random = createTrial({
+      duration: 40,
+      previousCueStart: 10,
+      settings: { ...defaultSettings, mode: 'mentalLap', mentalLapOrder: 'random', T: 2 },
+      random: () => 0.25
+    });
+
+    expect(sequential.cueStart).toBe(12);
+    expect(random.cueStart).toBe(8.992);
   });
 
   it('updates weak-spot anchor stats', () => {

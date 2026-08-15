@@ -70,9 +70,31 @@ textarea:disabled {
 
 .top-bar {
   display: grid;
-  grid-template-columns: minmax(160px, auto) 1fr;
+  grid-template-columns: minmax(160px, auto) 1fr auto;
   gap: 12px;
   align-items: center;
+}
+
+.help-link {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #34465a;
+  border-radius: 50%;
+  background: #111a24;
+  color: #dce6f2;
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.help-link:hover,
+.help-link:focus-visible {
+  border-color: #ff9638;
+  color: #ffffff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 150, 56, 0.2);
 }
 
 .top-bar h1 {
@@ -444,7 +466,8 @@ textarea:disabled {
 .preset-row label,
 .select-row label,
 .range-row label,
-.response-gap-control {
+.response-gap-control,
+.mental-order-control {
   display: grid;
   gap: 3px;
 }
@@ -479,6 +502,16 @@ textarea:disabled {
   display: flex;
   justify-content: space-between;
   gap: 4px;
+}
+
+.mental-order-control > span {
+  display: block;
+  color: #aeb9c7;
+  font-size: 0.68rem;
+}
+
+.mental-order-segmented {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .quick-controls span {
@@ -639,6 +672,15 @@ input[type="number"] {
 .segmented .active {
   background: #244333;
   border-color: #35d47f;
+}
+
+.inactive-control {
+  color: #687586 !important;
+  opacity: 0.52;
+}
+
+.inactive-control strong {
+  color: #788493;
 }
 
 .check-row,

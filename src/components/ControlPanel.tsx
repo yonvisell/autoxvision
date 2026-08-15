@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { GalleryPlayback, Mode, Preset, Settings } from '../types';
+import type { GalleryPlayback, MentalLapOrder, Mode, Preset, Settings } from '../types';
 
 type ControlPanelProps = {
   settings: Settings;
@@ -29,6 +29,7 @@ export function ControlPanel({
   onToggleCollapsed
 }: ControlPanelProps) {
   const applyCustom = (patch: Partial<Settings>) => onSettingsChange(patch);
+  const galleryControlsInactive = settings.mode === 'mentalLap';
   const forwardGapMax = Math.max(0, maxForwardGapLimit);
   const minGapPercent = forwardGapMax > 0 ? (Math.min(settings.minForwardGap, forwardGapMax) / forwardGapMax) * 100 : 0;
   const maxGapPercent = forwardGapMax > 0 ? (Math.min(settings.maxForwardGap, forwardGapMax) / forwardGapMax) * 100 : 0;
@@ -90,7 +91,7 @@ export function ControlPanel({
           />
         </label>
 
-        <label title="Number of answer choices">
+        <label className={galleryControlsInactive ? 'inactive-control' : ''} title={galleryControlsInactive ? 'Not used in mental lap' : 'Number of answer choices'}>
           <span>Choices <strong>{settings.N}</strong></span>
           <input
             type="range"
@@ -98,12 +99,15 @@ export function ControlPanel({
             max="8"
             step="1"
             value={settings.N}
-            disabled={disabled}
+            disabled={disabled || galleryControlsInactive}
             onChange={(event) => applyCustom({ N: Number(event.currentTarget.value) })}
           />
         </label>
 
-        <label title="Black pause after the prompt before each answer choice plays">
+        <label
+          className={galleryControlsInactive ? 'inactive-control' : ''}
+          title={galleryControlsInactive ? 'Not used in mental lap' : 'Black pause after the prompt before each answer choice plays'}
+        >
           <span>Choice wait <strong>{settings.galleryDelay.toFixed(2)}s</strong></span>
           <input
             type="range"
@@ -111,7 +115,7 @@ export function ControlPanel({
             max="4"
             step="0.25"
             value={settings.galleryDelay}
-            disabled={disabled}
+            disabled={disabled || galleryControlsInactive}
             onChange={(event) => applyCustom({ galleryDelay: Number(event.currentTarget.value) })}
           />
         </label>
@@ -176,13 +180,13 @@ export function ControlPanel({
       </div>
 
       <div className="playback-controls">
-        <div className="segmented" aria-label="Gallery playback">
+        <div className={`segmented${galleryControlsInactive ? ' inactive-control' : ''}`} aria-label="Gallery playback">
           {(['sequence', 'hover', 'allLoop'] as GalleryPlayback[]).map((value) => (
             <button
               type="button"
               key={value}
               className={settings.galleryPlayback === value ? 'active' : ''}
-              disabled={disabled}
+              disabled={disabled || galleryControlsInactive}
               onClick={() => applyCustom({ galleryPlayback: value })}
               title={
                 value === 'sequence'
@@ -207,11 +211,11 @@ export function ControlPanel({
             />
             Replay
           </label>
-          <label title="Play correct and wrong feedback tones">
+          <label className={galleryControlsInactive ? 'inactive-control' : ''} title={galleryControlsInactive ? 'Not used in mental lap' : 'Play correct and wrong feedback tones'}>
             <input
               type="checkbox"
               checked={settings.soundEnabled}
-              disabled={disabled}
+              disabled={disabled || galleryControlsInactive}
               onChange={(event) => applyCustom({ soundEnabled: event.currentTarget.checked })}
             />
             Sound
@@ -219,36 +223,57 @@ export function ControlPanel({
         </div>
       </div>
 
-      <div
-        className="response-gap-control"
-        title={`Random source-time gap between prompt end and the correct response start. Slider max is 60s; current video cap is ${forwardGapMax.toFixed(2)}s.`}
-      >
-        <span>
-          Response gap <strong>{settings.minForwardGap.toFixed(2)}-{settings.maxForwardGap.toFixed(2)}s</strong>
-        </span>
-        <div className="dual-range" style={responseGapStyle}>
-          <input
-            aria-label="Minimum response gap"
-            type="range"
-            min="0"
-            max={forwardGapMax}
-            step="0.25"
-            value={settings.minForwardGap}
-            disabled={disabled || forwardGapMax <= 0}
-            onChange={(event) => setMinForwardGap(Number(event.currentTarget.value))}
-          />
-          <input
-            aria-label="Maximum response gap"
-            type="range"
-            min="0"
-            max={forwardGapMax}
-            step="0.25"
-            value={settings.maxForwardGap}
-            disabled={disabled || forwardGapMax <= 0}
-            onChange={(event) => setMaxForwardGap(Number(event.currentTarget.value))}
-          />
+      {settings.mode === 'mentalLap' ? (
+        <div className="mental-order-control">
+          <span>Mental lap order</span>
+          <div className="segmented mental-order-segmented" aria-label="Mental lap order">
+            {(['sequential', 'random'] as MentalLapOrder[]).map((value) => (
+              <button
+                type="button"
+                key={value}
+                className={settings.mentalLapOrder === value ? 'active' : ''}
+                disabled={disabled}
+                aria-pressed={settings.mentalLapOrder === value}
+                onClick={() => applyCustom({ mentalLapOrder: value })}
+                title={value === 'sequential' ? 'Advance through the course in order' : 'Choose an independent random prompt start each trial'}
+              >
+                {value === 'sequential' ? 'Sequential' : 'Random starts'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div
+          className="response-gap-control"
+          title={`Random source-time gap between prompt end and the correct response start. Slider max is 60s; current video cap is ${forwardGapMax.toFixed(2)}s.`}
+        >
+          <span>
+            Response gap <strong>{settings.minForwardGap.toFixed(2)}-{settings.maxForwardGap.toFixed(2)}s</strong>
+          </span>
+          <div className="dual-range" style={responseGapStyle}>
+            <input
+              aria-label="Minimum response gap"
+              type="range"
+              min="0"
+              max={forwardGapMax}
+              step="0.25"
+              value={settings.minForwardGap}
+              disabled={disabled || forwardGapMax <= 0}
+              onChange={(event) => setMinForwardGap(Number(event.currentTarget.value))}
+            />
+            <input
+              aria-label="Maximum response gap"
+              type="range"
+              min="0"
+              max={forwardGapMax}
+              step="0.25"
+              value={settings.maxForwardGap}
+              disabled={disabled || forwardGapMax <= 0}
+              onChange={(event) => setMaxForwardGap(Number(event.currentTarget.value))}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="range-row">
         <label title="Lower cue-start bound">
@@ -281,7 +306,13 @@ export function ControlPanel({
         </label>
       </div>
 
-      <button type="button" className="reset-score" onClick={onResetScore} disabled={disabled} title="Reset this session score to zero">
+      <button
+        type="button"
+        className={`reset-score${galleryControlsInactive ? ' inactive-control' : ''}`}
+        onClick={onResetScore}
+        disabled={disabled || galleryControlsInactive}
+        title={galleryControlsInactive ? 'Score is not used in mental lap' : 'Reset this session score to zero'}
+      >
         Reset score
       </button>
 

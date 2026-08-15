@@ -24,5 +24,6 @@ describe('presets', () => {
     expect(defaultSettings.minForwardGap).toBe(1);
     expect(defaultSettings.maxForwardGap).toBe(50);
     expect(defaultSettings.playbackRate).toBe(1);
+    expect(defaultSettings.mentalLapOrder).toBe('sequential');
   });
 });

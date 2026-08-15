@@ -376,6 +376,25 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 
 `npm run build`
 # Result: passed, Vite production build written to dist/.
+
+# Mental-lap timing, progression, help, and public release:
+- Mental-lap continuation is now immediate and exactly the prompt duration. Show answer plays the continuous `A+B` interval, with `duration(A) = duration(B) = T`.
+- Added persistent Sequential and Random starts mental-lap progression. Sequential advances by `T`; Random starts resamples independently for each trial.
+- Gallery/scoring controls that do not apply to mental lap remain visible but are disabled and greyed out; they reactivate when a gallery recall mode is selected.
+- Added the title-bar `?` link and a standalone `help.html` covering operation, timing, modes, controls, shortcuts, persistence, privacy, and codec limitations.
+- Added the official Vite/GitHub Pages build and deployment workflow for `yonvisell/autoxvision`.
+
+`npm install --no-audit --no-fund`
+# Result: passed, up to date.
+
+`npm run lint`
+# Result: passed.
+
+`npm test -- --run`
+# Result: passed, 4 test files / 24 tests.
+
+`npm run build`
+# Result: passed; production output includes the app and `help.html`.
 ```
 
 Visual inspection:
@@ -406,6 +425,7 @@ Visual inspection:
 - Response-gap / manual-next checks: Verified in local Chrome with ignored `AAXLPM1.MOV` on `127.0.0.1:5174` that the response-gap control has two handles with max `60`, a configured 5-12s response gap sampled a correct start 10.6s after prompt end, notes show the collapsible hotkey line, a correct reveal stops at `Click for next prompt`, Space/R starts the next prompt, and clicking the cue pane also starts the next prompt. Screenshots: `/tmp/autoxvision-5174-response-gap.png` and `/tmp/autoxvision-5174-response-gap-control.png`.
 - Gallery sequence lockout checks: Verified in local Chrome with ignored `AAXLPM1.MOV` on `127.0.0.1:5174` that after one-by-one gallery playback finishes, gallery tiles remain enabled, no prompt autoplay/blackout begins, and the correct-answer manual-next flow still starts the next prompt with Space.
 - Distractor/seek checks: Verified with ignored `AAXLPM1.MOV` on `127.0.0.1:5175` that random and sequential wrong-choice timestamps were outside the complete buffered prompt-to-answer window. Checked assigned starts against live `<video>.currentTime`; all tiles sought to the assigned timestamp before becoming visible, with no out-of-range active playback samples.
+- Mental-lap release checks: With ignored `AAXLPM1.MOV`, a 2.5s Show answer reveal began at the prompt start, remained active across the A/B boundary, and ended after 5.0s. Sequential progression advanced `214.13s -> 216.63s`; Random starts sampled `155.37s -> 258.88s`. Verified the progression selector, title-bar help link, complete help-page layout, seven inactive mental-lap controls, and full reactivation in Random recall.
 
 ## Remaining limitations
 
