@@ -395,6 +395,10 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 
 `npm run build`
 # Result: passed; production output includes the app and `help.html`.
+
+GitHub Pages deployment:
+# Result: created public repository `yonvisell/autoxvision`, pushed `main`, enabled GitHub Actions as the Pages source, and completed deployment run #2 successfully in 30s.
+# Live URLs: `https://yonvisell.github.io/autoxvision/` and `https://yonvisell.github.io/autoxvision/help.html`.
 ```
 
 Visual inspection:
@@ -426,6 +430,7 @@ Visual inspection:
 - Gallery sequence lockout checks: Verified in local Chrome with ignored `AAXLPM1.MOV` on `127.0.0.1:5174` that after one-by-one gallery playback finishes, gallery tiles remain enabled, no prompt autoplay/blackout begins, and the correct-answer manual-next flow still starts the next prompt with Space.
 - Distractor/seek checks: Verified with ignored `AAXLPM1.MOV` on `127.0.0.1:5175` that random and sequential wrong-choice timestamps were outside the complete buffered prompt-to-answer window. Checked assigned starts against live `<video>.currentTime`; all tiles sought to the assigned timestamp before becoming visible, with no out-of-range active playback samples.
 - Mental-lap release checks: With ignored `AAXLPM1.MOV`, a 2.5s Show answer reveal began at the prompt start, remained active across the A/B boundary, and ended after 5.0s. Sequential progression advanced `214.13s -> 216.63s`; Random starts sampled `155.37s -> 258.88s`. Verified the progression selector, title-bar help link, complete help-page layout, seven inactive mental-lap controls, and full reactivation in Random recall.
+- Public-site checks: Both live URLs returned HTTP 200. The deployed app loaded the expected production JavaScript/CSS assets, exposed the title-bar help link and Video control, and produced no browser warnings or errors. The live instructions included mental-lap timing and local-video privacy guidance with no browser warnings or errors.
 
 ## Remaining limitations
 
@@ -439,7 +444,8 @@ List only real limitations that remain at handoff.
 ## Final handoff summary
 
 - Built: Complete local-first temporal-occlusion recall trainer with file loading, prompt/choice playback, adaptive choice layout, miss retry history, scoring, presets, modes, notes, persistence, export/import logic, sounds, and tests.
-- How to run: `npm install`, then `npm run dev` with Node >=20; current dev server is running at `http://127.0.0.1:5173/`.
+- How to run: `npm install`, then `npm run dev` with Node >=20; current dev server is running at `http://127.0.0.1:5175/`.
+- Public app: `https://yonvisell.github.io/autoxvision/`.
 - How to build: `npm run build`.
 - Tests: `npm run lint`, `npm test`, and `npm run build` passed.
 - Notes for Yon: Shortcut help is visible in the bottom overlay line. Local videos stay out of git via `.gitignore`.
