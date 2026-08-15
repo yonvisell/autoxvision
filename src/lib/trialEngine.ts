@@ -205,17 +205,22 @@ function sampleRemoteDistractorStarts({
 
   const sourceStart = 0;
   const sourceEnd = Math.max(sourceStart, duration - T);
-  const intervals = remoteDistractorIntervals(sourceStart, sourceEnd, cueStart, correctStart + T, T);
+  const correctEnd = correctStart + T;
+  const buffers = uniqueDescending([Math.max(REMOTE_DISTRACTOR_GAP_SECONDS, T * 4), REMOTE_DISTRACTOR_GAP_SECONDS, T * 2, T]);
   const separations = uniqueDescending([REMOTE_DISTRACTOR_GAP_SECONDS, T * 4, T * 2, T, EPS]);
 
-  for (const separation of separations) {
-    const starts = sampleStartsFromIntervals(intervals, count, separation, random);
-    if (starts.length === count) {
-      return starts;
+  for (const buffer of buffers) {
+    const intervals = remoteDistractorIntervals(sourceStart, sourceEnd, cueStart, correctEnd, T, buffer);
+    for (const separation of separations) {
+      const starts = sampleStartsFromIntervals(intervals, count, separation, random);
+      if (starts.length === count) {
+        return starts;
+      }
     }
   }
 
-  const spread = spreadStartsAcrossIntervals(intervals, count);
+  const safeIntervals = remoteDistractorIntervals(sourceStart, sourceEnd, cueStart, correctEnd, T, T);
+  const spread = spreadStartsAcrossIntervals(safeIntervals, count);
   if (spread.length > 0) {
     return spread;
   }
@@ -232,13 +237,14 @@ function remoteDistractorIntervals(
   sourceEnd: number,
   cueStart: number,
   correctEnd: number,
-  delta: number
+  clipDuration: number,
+  buffer: number
 ): TimeInterval[] {
-  const forbiddenStart = Math.max(sourceStart, cueStart - delta);
-  const forbiddenEnd = Math.min(sourceEnd, correctEnd + delta);
+  const beforeEnd = Math.min(sourceEnd, cueStart - buffer - clipDuration);
+  const afterStart = Math.max(sourceStart, correctEnd + buffer);
   return [
-    { start: sourceStart, end: forbiddenStart },
-    { start: forbiddenEnd, end: sourceEnd }
+    { start: sourceStart, end: beforeEnd },
+    { start: afterStart, end: sourceEnd }
   ].filter((interval) => interval.end - interval.start >= EPS);
 }
 

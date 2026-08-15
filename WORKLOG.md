@@ -362,6 +362,20 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
   node /Users/yon/Library/pnpm/store/v11/links/@/npm/10.9.8/0fe3e78be5bcc23ca57f8487bba8e7a13da0f6e4b1e4a7f179b0b51056b49f8c/node_modules/npm/bin/npm-cli.js run build
 # Result: passed, Vite production build written to dist/.
+
+# Distractor-window and gallery-seek correction:
+- Wrong choices now prefer remote course times and may relax only as far as a hard safety boundary: the entire wrong clip must lie before `prompt start - T` or begin after `correct answer end + T`.
+- Gallery tiles remain black until their video element has completed the seek to the assigned clip start, preventing transient frames from a stale or default media time from being presented under the wrong answer label.
+- Added a deterministic 2,000-trial regression sweep across random/sequential modes, prompt lengths, response gaps, and eight-choice galleries.
+
+`npm run lint`
+# Result: passed.
+
+`npm test -- --run`
+# Result: passed, 4 test files / 23 tests, including 2,000 generated timing trials.
+
+`npm run build`
+# Result: passed, Vite production build written to dist/.
 ```
 
 Visual inspection:
@@ -391,6 +405,7 @@ Visual inspection:
 - Strict exclusion checks: Verified in local Chrome with ignored `AAXLPM1.MOV` that a random-mode trial with `T = 2` had forbidden wrong-choice interval `185.69s-195.09s`; all wrong gallery starts were outside that interval.
 - Response-gap / manual-next checks: Verified in local Chrome with ignored `AAXLPM1.MOV` on `127.0.0.1:5174` that the response-gap control has two handles with max `60`, a configured 5-12s response gap sampled a correct start 10.6s after prompt end, notes show the collapsible hotkey line, a correct reveal stops at `Click for next prompt`, Space/R starts the next prompt, and clicking the cue pane also starts the next prompt. Screenshots: `/tmp/autoxvision-5174-response-gap.png` and `/tmp/autoxvision-5174-response-gap-control.png`.
 - Gallery sequence lockout checks: Verified in local Chrome with ignored `AAXLPM1.MOV` on `127.0.0.1:5174` that after one-by-one gallery playback finishes, gallery tiles remain enabled, no prompt autoplay/blackout begins, and the correct-answer manual-next flow still starts the next prompt with Space.
+- Distractor/seek checks: Verified with ignored `AAXLPM1.MOV` on `127.0.0.1:5175` that random and sequential wrong-choice timestamps were outside the complete buffered prompt-to-answer window. Checked assigned starts against live `<video>.currentTime`; all tiles sought to the assigned timestamp before becoming visible, with no out-of-range active playback samples.
 
 ## Remaining limitations
 

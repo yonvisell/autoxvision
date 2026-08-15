@@ -28,6 +28,7 @@ export function GalleryTile({
 }: GalleryTileProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hovered, setHovered] = useState(false);
+  const [clipReady, setClipReady] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -37,9 +38,11 @@ export function GalleryTile({
 
     let frame = 0;
     let active = true;
+    let started = false;
     const shouldPlay = playback === 'allLoop' || (playback === 'hover' && hovered) || (playback === 'sequence' && isSequenceActive);
     video.playbackRate = playbackRate;
-    video.currentTime = item.clip.start;
+    video.pause();
+    setClipReady(false);
 
     const tick = () => {
       if (!active) {
@@ -57,17 +60,44 @@ export function GalleryTile({
       frame = window.requestAnimationFrame(tick);
     };
 
-    if (shouldPlay && !disabled) {
-      void video.play().catch(() => undefined);
-      frame = window.requestAnimationFrame(tick);
-    } else {
-      video.pause();
+    const startAtAssignedTime = () => {
+      if (!active || started) {
+        return;
+      }
+      started = true;
+      setClipReady(true);
+      if (shouldPlay && !disabled) {
+        void video.play().catch(() => undefined);
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+
+    const seekToAssignedTime = () => {
+      if (!active || video.readyState < HTMLMediaElement.HAVE_METADATA) {
+        return;
+      }
+      if (Math.abs(video.currentTime - item.clip.start) <= 0.015) {
+        startAtAssignedTime();
+        return;
+      }
       video.currentTime = item.clip.start;
-    }
+    };
+
+    const handleSeeked = () => {
+      if (Math.abs(video.currentTime - item.clip.start) <= 0.05) {
+        startAtAssignedTime();
+      }
+    };
+
+    video.addEventListener('loadedmetadata', seekToAssignedTime);
+    video.addEventListener('seeked', handleSeeked);
+    seekToAssignedTime();
 
     return () => {
       active = false;
       window.cancelAnimationFrame(frame);
+      video.removeEventListener('loadedmetadata', seekToAssignedTime);
+      video.removeEventListener('seeked', handleSeeked);
     };
   }, [disabled, hovered, isSequenceActive, item.clip.end, item.clip.start, playback, playbackRate]);
 
@@ -88,7 +118,7 @@ export function GalleryTile({
       aria-label={`Pick answer choice ${index + 1}`}
     >
       <video ref={videoRef} src={videoUrl} muted playsInline preload="metadata" />
-      {playback === 'sequence' && !isSequenceActive ? <span className="tile-blackout" /> : null}
+      {!clipReady || (playback === 'sequence' && !isSequenceActive) ? <span className="tile-blackout" /> : null}
       <span className="tile-number">{index + 1}</span>
       <span className="tile-pick">Pick</span>
     </button>

@@ -70,6 +70,35 @@ describe('trialEngine', () => {
     }
   });
 
+  it('keeps every wrong clip wholly outside the protected prompt-to-answer window', () => {
+    let state = 0x9e3779b9;
+    const random = () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state / 0x1_0000_0000;
+    };
+
+    for (let index = 0; index < 2000; index += 1) {
+      const T = 0.25 + (index % 40) * 0.25;
+      const minForwardGap = index % 10;
+      const maxForwardGap = minForwardGap + (index % (61 - minForwardGap));
+      const trial = createTrial({
+        duration: 360,
+        settings: { ...defaultSettings, mode: index % 2 === 0 ? 'random' : 'sequential', T, N: 8, minForwardGap, maxForwardGap },
+        previousCueStart: index % 2 === 0 ? null : 90,
+        random
+      });
+      const correct = trial.gallery.find((item) => item.isCorrect);
+
+      expect(correct).toBeDefined();
+      expect(trial.gallery).toHaveLength(8);
+      for (const item of trial.gallery.filter((entry) => !entry.isCorrect)) {
+        const whollyBefore = item.clip.end <= trial.cue.start - T + 0.001;
+        const whollyAfter = item.clip.start >= (correct?.clip.end ?? 0) + T - 0.001;
+        expect(whollyBefore || whollyAfter).toBe(true);
+      }
+    }
+  });
+
   it('samples sequential-recall wrong choices from other course times', () => {
     let i = 0;
     const values = [0.5, 0.2, 0.85, 0.4, 0.92, 0.7, 0.15, 0.6, 0.25, 0.95];
