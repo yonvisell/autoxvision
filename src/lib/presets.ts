@@ -1,16 +1,16 @@
 import type { Preset, Settings } from '../types';
 
 export const defaultSettings: Settings = {
-  T: 2.5,
+  T: 10,
   N: 3,
   mode: 'random',
   mentalLapOrder: 'sequential',
   preset: 'custom',
   galleryPlayback: 'sequence',
-  galleryDelay: 2,
+  galleryDelay: 1,
   minForwardGap: 1,
   maxForwardGap: 50,
-  playbackRate: 1,
+  playbackRate: 4,
   replayEnabled: true,
   soundEnabled: true,
   t0: 0,

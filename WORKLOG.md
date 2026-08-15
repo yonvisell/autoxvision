@@ -399,6 +399,9 @@ PATH="/Users/yon/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/b
 GitHub Pages deployment:
 # Result: created public repository `yonvisell/autoxvision`, pushed `main`, enabled GitHub Actions as the Pages source, and completed deployment run #2 successfully in 30s.
 # Live URLs: `https://yonvisell.github.io/autoxvision/` and `https://yonvisell.github.io/autoxvision/help.html`.
+
+Default-value follow-up:
+# Changed fresh-session defaults to Prompt `10.0s`, Speed `4.0x`, and Choice wait `1.0s`; all other defaults and built-in presets are unchanged. Validation commands were intentionally omitted at the user's request because this was a defaults-only revision.
 ```
 
 Visual inspection:

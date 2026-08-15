@@ -39,7 +39,7 @@ The video remains local in the browser. It is not uploaded.
 ## Controls
 
 - Video file picker.
-- Cue length slider: cue and answer/gallery clip duration, default `2.5s`.
+- Cue length slider: cue and answer/gallery clip duration, default `10.0s`.
 - Choices slider: number of gallery items, range `2–8`, default `3`.
 - Gallery pause slider: blackout/pause before each candidate in sequence playback.
 - Preset dropdown: quick settings for encoding, learning, performance, and pressure.

@@ -18,12 +18,12 @@ describe('presets', () => {
   });
 
   it('uses a longer cue and sequential gallery playback by default', () => {
-    expect(defaultSettings.T).toBe(2.5);
+    expect(defaultSettings.T).toBe(10);
     expect(defaultSettings.galleryPlayback).toBe('sequence');
-    expect(defaultSettings.galleryDelay).toBe(2);
+    expect(defaultSettings.galleryDelay).toBe(1);
     expect(defaultSettings.minForwardGap).toBe(1);
     expect(defaultSettings.maxForwardGap).toBe(50);
-    expect(defaultSettings.playbackRate).toBe(1);
+    expect(defaultSettings.playbackRate).toBe(4);
     expect(defaultSettings.mentalLapOrder).toBe('sequential');
   });
 });
