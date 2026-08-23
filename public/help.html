@@ -135,7 +135,7 @@
       </header>
 
       <p class="intro">
-        AutoxVision is a temporal-recall trainer for first-person autocross course-walk video. It presents a prompt from the source video, hides it, and asks for the continuation. All processing and saved practice data remain in the browser.
+        AutoxVision trains recognition of the next course feature from first-person course-walk video. It shows a short prompt, hides it, and asks you to identify or mentally reproduce the nearest upcoming segment. The selected video and practice data stay in your browser.
       </p>
 
       <div class="sections">
@@ -143,31 +143,33 @@
           <section>
             <h2>Start a session</h2>
             <ol>
-              <li>Select <strong>Video</strong>, then choose a browser-playable local course video.</li>
-              <li>Set the prompt duration, number of choices, playback speed, and session mode.</li>
-              <li>Watch the prompt once. After the blackout and choice wait, select the continuation.</li>
-              <li>After the correct reveal, click the prompt pane or press <code>Space</code> or <code>R</code> for the next trial.</li>
+              <li>Select <strong>Video</strong> and choose a browser-playable local course video. A new file resets the course range to its beginning and end.</li>
+              <li>Choose a mode, then set prompt length, speed, and the number and playback style of choices.</li>
+              <li>Watch the prompt once. After the blackout, click the video that begins nearest in course time after the prompt.</li>
+              <li>Use the green prompt-through-answer replay to reinforce the connection, then click the prompt pane or press <code>Space</code> or <code>R</code> for the next trial.</li>
             </ol>
           </section>
 
           <section>
             <h2>Recall modes</h2>
             <dl>
-              <dt>Random recall</dt><dd>Samples an independent prompt time for each new trial.</dd>
-              <dt>Sequential recall</dt><dd>Advances through the course in source-time order.</dd>
-              <dt>Weak spots</dt><dd>Uses random sampling until enough history exists, then favors slower or missed prompt locations.</dd>
-              <dt>Mental lap</dt><dd>Hides the gallery. Run the continuation mentally, then use <strong>Show answer</strong>. Sequential order advances by one prompt duration; Random starts independently resamples each trial.</dd>
+              <dt>Random recall mode</dt><dd>Samples an independent prompt location for each trial.</dd>
+              <dt>Sequential recall mode</dt><dd>Starts a newly loaded course at the beginning and advances through it in source-time order. Use <strong>Sequential position</strong> to jump to another location.</dd>
+              <dt>Weak spots mode</dt><dd>Begins with random sampling, then favors prompt locations associated with missed or slower answers.</dd>
+              <dt>Mental lap mode</dt><dd>Hides the gallery. Visualize the continuation, then use <strong>Show answer</strong>. Choose sequential order or independent random starts in the controls.</dd>
             </dl>
           </section>
 
           <section>
             <h2>Timing</h2>
             <ul>
-              <li><strong>Prompt</strong> sets duration <code>T</code> for prompt and continuation clips.</li>
+              <li><strong>Prompt length</strong> is displayed viewing time. A 5-second prompt lasts 5 seconds at every speed; increasing speed covers more source-video time.</li>
+              <li>Continuation choices have the same displayed duration as the prompt.</li>
               <li><strong>Response gap</strong> sets the allowed source-time interval between prompt end and the correct gallery continuation in recall modes.</li>
+              <li><strong>Choice wait</strong> sets the blackout time before gallery choices become active.</li>
               <li>Wrong choices are sampled outside the protected prompt-to-answer interval.</li>
               <li>In mental lap, the continuation is immediate and has the same duration as the prompt. Show answer plays the continuous prompt-plus-continuation sequence.</li>
-              <li><strong>Start</strong> and <strong>End</strong> restrict the source-time region used for prompt starts.</li>
+              <li><strong>Start</strong> and <strong>End</strong> restrict the course region used for prompt starts.</li>
             </ul>
           </section>
 
@@ -178,7 +180,7 @@
               <dt>Hover</dt><dd>Plays a choice while its tile is hovered or keyboard-focused.</dd>
               <dt>All play</dt><dd>Loops all choices simultaneously.</dd>
             </dl>
-            <p>Selecting a tile always submits that answer. Incorrect choices remain available for another attempt.</p>
+            <p><strong>Loop pause</strong> holds the end of each Hover or All play clip before it restarts. Clicking anywhere on a video submits that answer; an incorrect choice remains available for another attempt.</p>
           </section>
         </div>
 
@@ -188,19 +190,21 @@
             <dl>
               <dt>Replay prompt</dt><dd>Replays the current prompt when Replay is enabled.</dd>
               <dt>Show answer</dt><dd>Reveals the correct continuation. It is available without a gallery choice in mental lap.</dd>
-              <dt>Course start</dt><dd>Restarts sequential recall or mental-lap practice at the configured Start time.</dd>
+              <dt>Replay full answer</dt><dd>After a sequential answer has played, replays the complete prompt-through-correct-continuation sequence.</dd>
+              <dt>Course start</dt><dd>Restarts sequential recall or mental-lap practice at the active Start time.</dd>
+              <dt>Next prompt</dt><dd>Begins the next trial after an answer replay. Clicking the black prompt pane does the same thing.</dd>
             </dl>
           </section>
 
           <section>
             <h2>Controls and presets</h2>
             <ul>
-              <li><strong>Choice wait</strong> sets the blackout interval before choices play.</li>
               <li><strong>Speed</strong> applies to prompt, gallery, and reveal playback.</li>
               <li><strong>Replay</strong> permits prompt replay while answering.</li>
               <li><strong>Sound</strong> enables correct and incorrect feedback tones.</li>
+              <li><strong>Sequential position</strong> moves practice within the active Start-to-End range and is disabled in other modes.</li>
               <li>Controls that do not apply to the selected session mode remain visible but are disabled and greyed out.</li>
-              <li>Built-in presets set related controls together. Any direct edit changes the preset to Custom. <strong>Save preset</strong> stores one reusable local preset.</li>
+              <li>The preset menu at the bottom applies grouped settings. Any direct edit changes it to Custom; <strong>Save preset</strong> stores one reusable local preset without changing the current course range.</li>
               <li>Drag the horizontal divider to resize prompt and gallery. Notes and controls can be collapsed horizontally.</li>
             </ul>
           </section>

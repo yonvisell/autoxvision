@@ -5,6 +5,8 @@ type ControlPanelProps = {
   settings: Settings;
   duration: number | null;
   maxForwardGapLimit: number;
+  sequentialPosition: number;
+  sequentialPositionMax: number;
   disabled: boolean;
   collapsed: boolean;
   onFileChange: (file: File | null) => void;
@@ -12,6 +14,7 @@ type ControlPanelProps = {
   onPresetChange: (preset: Preset) => void;
   onSavePreset: () => void;
   onResetScore: () => void;
+  onSequentialPositionChange: (position: number) => void;
   onToggleCollapsed: () => void;
 };
 
@@ -19,6 +22,8 @@ export function ControlPanel({
   settings,
   duration,
   maxForwardGapLimit,
+  sequentialPosition,
+  sequentialPositionMax,
   disabled,
   collapsed,
   onFileChange,
@@ -26,10 +31,13 @@ export function ControlPanel({
   onPresetChange,
   onSavePreset,
   onResetScore,
+  onSequentialPositionChange,
   onToggleCollapsed
 }: ControlPanelProps) {
   const applyCustom = (patch: Partial<Settings>) => onSettingsChange(patch);
   const galleryControlsInactive = settings.mode === 'mentalLap';
+  const loopDelayInactive = galleryControlsInactive || settings.galleryPlayback === 'sequence';
+  const sequentialPositionInactive = settings.mode !== 'sequential';
   const forwardGapMax = Math.max(0, maxForwardGapLimit);
   const minGapPercent = forwardGapMax > 0 ? (Math.min(settings.minForwardGap, forwardGapMax) / forwardGapMax) * 100 : 0;
   const maxGapPercent = forwardGapMax > 0 ? (Math.min(settings.maxForwardGap, forwardGapMax) / forwardGapMax) * 100 : 0;
@@ -55,7 +63,7 @@ export function ControlPanel({
   if (collapsed) {
     return (
       <aside className="control-panel control-panel-collapsed" aria-label="Controls">
-          <button type="button" className="collapse-tab" onClick={onToggleCollapsed} title="Expand controls" aria-label="Expand controls">
+        <button type="button" className="collapse-tab" onClick={onToggleCollapsed} title="Expand controls" aria-label="Expand controls">
           Controls
         </button>
       </aside>
@@ -73,13 +81,30 @@ export function ControlPanel({
         <input
           type="file"
           accept="video/*,.mov,.mp4,.m4v,.webm"
-          onChange={(event) => onFileChange(event.currentTarget.files?.[0] ?? null)}
+          onChange={(event) => {
+            onFileChange(event.currentTarget.files?.[0] ?? null);
+            event.currentTarget.value = '';
+          }}
         />
       </label>
 
+      <select
+        className="mode-select"
+        value={settings.mode}
+        disabled={disabled}
+        aria-label="Session mode"
+        title="Choose how prompt locations advance through the course"
+        onChange={(event) => applyCustom({ mode: event.currentTarget.value as Mode })}
+      >
+        <option value="random">Random recall mode</option>
+        <option value="sequential">Sequential recall mode</option>
+        <option value="weakSpots">Weak spots mode</option>
+        <option value="mentalLap">Mental lap mode</option>
+      </select>
+
       <div className="quick-controls">
-        <label title="Prompt and answer clip length in seconds">
-          <span>Prompt <strong>{settings.T.toFixed(2)}s</strong></span>
+        <label title="Displayed duration of each prompt and continuation, independent of playback speed">
+          <span>Prompt length <strong>{settings.T.toFixed(2)}s</strong></span>
           <input
             type="range"
             min="0.25"
@@ -134,51 +159,6 @@ export function ControlPanel({
         </label>
       </div>
 
-      <div className="core-selects">
-        <div className="preset-row">
-          <label>
-            <span>Preset</span>
-            <select
-              value={settings.preset}
-              disabled={disabled}
-              onChange={(event) => onPresetChange(event.currentTarget.value as Preset)}
-            >
-              <option value="custom">Custom</option>
-              <option value="saved">Saved</option>
-              <option value="encoding">Encoding</option>
-              <option value="learning">Learning</option>
-              <option value="performance">Performance</option>
-              <option value="pressure">Pressure</option>
-            </select>
-          </label>
-          <button
-            type="button"
-            className="save-preset"
-            disabled={disabled}
-            onClick={onSavePreset}
-            title="Save the current control values as your reusable preset"
-          >
-            Save preset
-          </button>
-        </div>
-
-        <div className="select-row">
-          <label className="mode-select">
-            <span>Session mode</span>
-            <select
-              value={settings.mode}
-              disabled={disabled}
-              onChange={(event) => applyCustom({ mode: event.currentTarget.value as Mode })}
-            >
-              <option value="random">Random recall</option>
-              <option value="sequential">Sequential recall</option>
-              <option value="weakSpots">Weak spots</option>
-              <option value="mentalLap">Mental lap</option>
-            </select>
-          </label>
-        </div>
-      </div>
-
       <div className="playback-controls">
         <div className={`segmented${galleryControlsInactive ? ' inactive-control' : ''}`} aria-label="Gallery playback">
           {(['sequence', 'hover', 'allLoop'] as GalleryPlayback[]).map((value) => (
@@ -201,25 +181,44 @@ export function ControlPanel({
           ))}
         </div>
 
-        <div className="check-row">
-          <label title="Allow Replay prompt while answering">
+        <div className="compact-options-row">
+          <label
+            className={`loop-pause-control${loopDelayInactive ? ' inactive-control' : ''}`}
+            title={loopDelayInactive ? 'Used by Hover and All play gallery playback' : 'Pause at the end of a gallery clip before it loops'}
+          >
+            <span>Loop pause</span>
             <input
-              type="checkbox"
-              checked={settings.replayEnabled}
-              disabled={disabled}
-              onChange={(event) => applyCustom({ replayEnabled: event.currentTarget.checked })}
+              type="number"
+              min="0"
+              max="10"
+              step="0.1"
+              value={settings.galleryLoopDelay}
+              disabled={disabled || loopDelayInactive}
+              aria-label="Gallery loop pause in seconds"
+              onChange={(event) => applyCustom({ galleryLoopDelay: Math.min(10, Math.max(0, Number(event.currentTarget.value) || 0)) })}
             />
-            Replay
+            <span>s</span>
           </label>
-          <label className={galleryControlsInactive ? 'inactive-control' : ''} title={galleryControlsInactive ? 'Not used in mental lap' : 'Play correct and wrong feedback tones'}>
-            <input
-              type="checkbox"
-              checked={settings.soundEnabled}
-              disabled={disabled || galleryControlsInactive}
-              onChange={(event) => applyCustom({ soundEnabled: event.currentTarget.checked })}
-            />
-            Sound
-          </label>
+          <div className="check-row">
+            <label title="Allow Replay prompt while answering">
+              <input
+                type="checkbox"
+                checked={settings.replayEnabled}
+                disabled={disabled}
+                onChange={(event) => applyCustom({ replayEnabled: event.currentTarget.checked })}
+              />
+              Replay
+            </label>
+            <label className={galleryControlsInactive ? 'inactive-control' : ''} title={galleryControlsInactive ? 'Not used in mental lap' : 'Play correct and wrong feedback tones'}>
+              <input
+                type="checkbox"
+                checked={settings.soundEnabled}
+                disabled={disabled || galleryControlsInactive}
+                onChange={(event) => applyCustom({ soundEnabled: event.currentTarget.checked })}
+              />
+              Sound
+            </label>
+          </div>
         </div>
       </div>
 
@@ -275,16 +274,48 @@ export function ControlPanel({
         </div>
       )}
 
+      <label
+        className={`sequential-position-control${sequentialPositionInactive ? ' inactive-control' : ''}`}
+        title={
+          sequentialPositionInactive
+            ? 'Available in Sequential recall mode'
+            : 'Move the next sequential prompt within the active Start and End course range'
+        }
+      >
+        <span>
+          Sequential position <strong>{sequentialPosition.toFixed(1)}s</strong>
+        </span>
+        <input
+          type="range"
+          min={settings.t0}
+          max={sequentialPositionMax}
+          step="0.1"
+          value={sequentialPosition}
+          disabled={disabled || sequentialPositionInactive || sequentialPositionMax <= settings.t0}
+          onChange={(event) => onSequentialPositionChange(Number(event.currentTarget.value))}
+        />
+      </label>
+
       <div className="range-row">
         <label title="Lower cue-start bound">
           <span>Start (s)</span>
           <input
             type="number"
             min="0"
+            max={duration ?? undefined}
             step="0.1"
             value={settings.t0}
             disabled={disabled}
-            onChange={(event) => applyCustom({ t0: Math.max(0, Number(event.currentTarget.value) || 0) })}
+            onChange={(event) => {
+              const t0 = Math.min(duration ?? Number.POSITIVE_INFINITY, Math.max(0, Number(event.currentTarget.value) || 0));
+              applyCustom({
+                t0,
+                t1:
+                  settings.t1 === null
+                    ? null
+                    : Math.max(t0, Math.min(duration ?? Number.POSITIVE_INFINITY, settings.t1))
+              });
+            }}
           />
         </label>
 
@@ -292,30 +323,64 @@ export function ControlPanel({
           <span>End (s)</span>
           <input
             type="number"
-            min="0"
+            min={settings.t0}
+            max={duration ?? undefined}
             step="0.1"
             value={settings.t1 ?? ''}
             placeholder={duration ? duration.toFixed(1) : 'auto'}
             disabled={disabled}
             onChange={(event) =>
               applyCustom({
-                t1: event.currentTarget.value === '' ? null : Math.max(0, Number(event.currentTarget.value) || 0)
+                t1:
+                  event.currentTarget.value === ''
+                    ? null
+                    : Math.min(
+                        duration ?? Number.POSITIVE_INFINITY,
+                        Math.max(settings.t0, Number(event.currentTarget.value) || 0)
+                      )
               })
             }
           />
         </label>
       </div>
 
-      <button
-        type="button"
-        className={`reset-score${galleryControlsInactive ? ' inactive-control' : ''}`}
-        onClick={onResetScore}
-        disabled={disabled || galleryControlsInactive}
-        title={galleryControlsInactive ? 'Score is not used in mental lap' : 'Reset this session score to zero'}
-      >
-        Reset score
-      </button>
-
+      <div className="preset-footer">
+        <div className="preset-divider" aria-hidden="true" />
+        <div className="preset-row">
+          <button
+            type="button"
+            className={`reset-score${galleryControlsInactive ? ' inactive-control' : ''}`}
+            onClick={onResetScore}
+            disabled={disabled || galleryControlsInactive}
+            title={galleryControlsInactive ? 'Score is not used in mental lap' : 'Reset this session score to zero'}
+          >
+            Reset score
+          </button>
+          <select
+            value={settings.preset}
+            disabled={disabled}
+            aria-label="Preset"
+            title="Apply a built-in or saved control preset"
+            onChange={(event) => onPresetChange(event.currentTarget.value as Preset)}
+          >
+            <option value="custom">Custom preset</option>
+            <option value="saved">Saved preset</option>
+            <option value="encoding">Encoding preset</option>
+            <option value="learning">Learning preset</option>
+            <option value="performance">Performance preset</option>
+            <option value="pressure">Pressure preset</option>
+          </select>
+          <button
+            type="button"
+            className="save-preset"
+            disabled={disabled}
+            onClick={onSavePreset}
+            title="Save the current control values as your reusable preset"
+          >
+            Save preset
+          </button>
+        </div>
+      </div>
     </aside>
   );
 }

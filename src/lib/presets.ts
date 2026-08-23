@@ -8,6 +8,7 @@ export const defaultSettings: Settings = {
   preset: 'custom',
   galleryPlayback: 'sequence',
   galleryDelay: 1,
+  galleryLoopDelay: 0.5,
   minForwardGap: 1,
   maxForwardGap: 50,
   playbackRate: 4,
@@ -53,12 +54,11 @@ export function savedPresetPayload(settings: Settings): Partial<Settings> {
     mentalLapOrder: settings.mentalLapOrder,
     galleryPlayback: settings.galleryPlayback,
     galleryDelay: settings.galleryDelay,
+    galleryLoopDelay: settings.galleryLoopDelay,
     minForwardGap: settings.minForwardGap,
     maxForwardGap: settings.maxForwardGap,
     playbackRate: settings.playbackRate,
     replayEnabled: settings.replayEnabled,
-    soundEnabled: settings.soundEnabled,
-    t0: settings.t0,
-    t1: settings.t1
+    soundEnabled: settings.soundEnabled
   };
 }

@@ -5,7 +5,13 @@ import { Gallery } from './components/Gallery';
 import { NotesBox } from './components/NotesBox';
 import { ScoreBadge } from './components/ScoreBadge';
 import { StatusLine } from './components/StatusLine';
-import { isVideoLongEnough, MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit } from './lib/clipMath';
+import {
+  clampT1,
+  isVideoLongEnough,
+  MAX_RESPONSE_GAP_SECONDS,
+  maxForwardGapLimit,
+  sourceDurationForPlayback
+} from './lib/clipMath';
 import { applyPreset, defaultSettings, markCustom } from './lib/presets';
 import {
   loadAnnotations,
@@ -66,7 +72,7 @@ function App() {
   const [wrongIds, setWrongIds] = useState<Set<string>>(new Set());
   const [missHistory, setMissHistory] = useState<MissAttempt[]>([]);
   const [activeMissId, setActiveMissId] = useState<string | null>(null);
-  const [lowerHeight, setLowerHeight] = useState(260);
+  const [lowerHeight, setLowerHeight] = useState(300);
   const [choicesReady, setChoicesReady] = useState(false);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
   const [notesCollapsed, setNotesCollapsed] = useState(false);
@@ -81,21 +87,26 @@ function App() {
   const timeoutRef = useRef<number | null>(null);
   const statsRef = useRef<Record<string, AnchorStats>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const forwardGapLimit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, settings.T));
+  const sourceClipDuration = sourceDurationForPlayback(settings.T, settings.playbackRate);
+  const forwardGapLimit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, sourceClipDuration));
   const effectiveMinForwardGap = Math.min(settings.minForwardGap, forwardGapLimit);
   const effectiveMaxForwardGap = Math.min(Math.max(settings.maxForwardGap, effectiveMinForwardGap), forwardGapLimit);
   const requiredForwardGap = settings.mode === 'mentalLap' ? 0 : effectiveMinForwardGap;
   const effectiveTrialSettings = useMemo<Settings>(
     () => ({
       ...settings,
+      T: sourceClipDuration,
       minForwardGap: effectiveMinForwardGap,
       maxForwardGap: effectiveMaxForwardGap
     }),
-    [effectiveMaxForwardGap, effectiveMinForwardGap, settings]
+    [effectiveMaxForwardGap, effectiveMinForwardGap, settings, sourceClipDuration]
   );
 
   const canRunTrial = Boolean(
-    video.url && video.duration !== null && isVideoLongEnough(video.duration, settings.T, requiredForwardGap) && !video.error
+    video.url &&
+      video.duration !== null &&
+      isVideoLongEnough(video.duration, sourceClipDuration, requiredForwardGap) &&
+      !video.error
   );
   const revealClip = useMemo(() => {
     if (!trial) {
@@ -116,6 +127,23 @@ function App() {
       (phase === 'answering' || (settings.mode === 'mentalLap' && phase !== 'idle' && phase !== 'revealing'))
   );
   const canRestartCourse = Boolean(video.url && canRunTrial && (settings.mode === 'sequential' || settings.mode === 'mentalLap'));
+  const canReplayFullAnswer = Boolean(video.url && trial && settings.mode === 'sequential' && phase === 'nextReady');
+  const sequentialCueClampGap =
+    video.duration !== null && isVideoLongEnough(video.duration, sourceClipDuration, effectiveMaxForwardGap)
+      ? effectiveMaxForwardGap
+      : effectiveMinForwardGap;
+  const sequentialCueStartMax =
+    video.duration === null
+      ? Math.max(0, settings.t0)
+      : clampT1(video.duration, sourceClipDuration, Math.max(0, settings.t0), settings.t1, sequentialCueClampGap);
+  const sequentialRangeEnd =
+    video.duration === null
+      ? Math.max(0, settings.t0)
+      : Math.max(settings.t0, Math.min(settings.t1 ?? video.duration, video.duration));
+  const sequentialPosition = Math.min(
+    sequentialCueStartMax,
+    Math.max(settings.t0, trial?.cueStart ?? settings.t0)
+  );
 
   useEffect(() => {
     saveSettings(settings);
@@ -125,7 +153,7 @@ function App() {
     if (video.duration === null) {
       return;
     }
-    const limit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, settings.T));
+    const limit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, sourceClipDuration));
     const minForwardGap = Math.min(settings.minForwardGap, limit);
     const maxForwardGap = Math.min(Math.max(settings.maxForwardGap, minForwardGap), limit);
     if (minForwardGap !== settings.minForwardGap || maxForwardGap !== settings.maxForwardGap) {
@@ -135,7 +163,7 @@ function App() {
         maxForwardGap
       }));
     }
-  }, [settings.T, settings.maxForwardGap, settings.minForwardGap, video.duration]);
+  }, [settings.maxForwardGap, settings.minForwardGap, sourceClipDuration, video.duration]);
 
   useEffect(() => {
     if (!video.url) {
@@ -258,13 +286,14 @@ function App() {
     if (!video.url || video.duration === null || video.error) {
       return;
     }
-    if (!isVideoLongEnough(video.duration, settings.T, requiredForwardGap)) {
+    if (!isVideoLongEnough(video.duration, sourceClipDuration, requiredForwardGap)) {
       setTrial(null);
       setPhase('idle');
       setStatus({ message: 'Video is too short for the current prompt length and minimum forward gap.', tone: 'warn' });
       return;
     }
-    beginTrial(null);
+    const forcedCueStart = settings.mode === 'sequential' ? (lastCueStart ?? effectiveTrialSettings.t0) : null;
+    beginTrial(null, forcedCueStart);
   }, [
     beginTrial,
     settings.T,
@@ -272,8 +301,10 @@ function App() {
     requiredForwardGap,
     settings.minForwardGap,
     settings.mode,
+    settings.playbackRate,
     settings.t0,
     settings.t1,
+    sourceClipDuration,
     video.duration,
     video.error,
     video.url
@@ -301,6 +332,7 @@ function App() {
     setPhase('idle');
     setScore(0);
     setLastCueStart(null);
+    setSettings((previous) => ({ ...previous, t0: 0, t1: null }));
     setMissHistory([]);
     setActiveMissId(null);
     setChoicesReady(false);
@@ -323,6 +355,12 @@ function App() {
   };
 
   const updateSettings = (patch: Partial<Settings>) => {
+    if (
+      (patch.mode !== undefined && patch.mode !== settings.mode) ||
+      (patch.t0 !== undefined && settings.mode === 'sequential')
+    ) {
+      setLastCueStart(null);
+    }
     setSettings((previous) => markCustom(previous, patch));
   };
 
@@ -332,9 +370,17 @@ function App() {
         setStatus({ message: 'No saved preset yet. Tune controls, then press Save preset.', tone: 'warn' });
         return;
       }
-      setSettings((previous) => ({ ...previous, ...savedPreset, preset: 'saved' }));
+      setLastCueStart(null);
+      setSettings((previous) => ({
+        ...previous,
+        ...savedPreset,
+        t0: previous.t0,
+        t1: previous.t1,
+        preset: 'saved'
+      }));
       return;
     }
+    setLastCueStart(null);
     setSettings((previous) => applyPreset(previous, preset));
   };
 
@@ -391,6 +437,28 @@ function App() {
     setPhase('cueDelay');
     setStatus({ message: '', tone: 'neutral' });
     timeoutRef.current = window.setTimeout(() => setPhase('cuePlaying'), cueDelayMs);
+  };
+
+  const replayFullAnswer = () => {
+    if (!trial || settings.mode !== 'sequential' || phase !== 'nextReady') {
+      return;
+    }
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+    setGallerySequenceIndex(null);
+    setChoicesReady(false);
+    setPhase('revealing');
+    setStatus({ message: 'Replaying the full prompt and correct continuation.', tone: 'good' });
+  };
+
+  const changeSequentialPosition = (position: number) => {
+    if (settings.mode !== 'sequential' || !canRunTrial) {
+      return;
+    }
+    const clamped = Math.min(sequentialCueStartMax, Math.max(settings.t0, position));
+    beginTrial(null, clamped);
+    setStatus({ message: `Sequential practice moved to ${clamped.toFixed(1)}s.`, tone: 'neutral' });
   };
 
   const revealAnswer = useCallback(() => {
@@ -524,7 +592,10 @@ function App() {
         return;
       }
 
-      const clipWallMs = (settings.T / Math.max(0.25, settings.playbackRate)) * 1000;
+      const firstClip = trial.gallery[0]?.clip;
+      const clipWallMs = firstClip
+        ? ((firstClip.end - firstClip.start) / Math.max(0.25, settings.playbackRate)) * 1000
+        : settings.T * 1000;
       for (let index = 0; index < trial.gallery.length; index += 1) {
         if (!active) {
           return;
@@ -600,9 +671,9 @@ function App() {
         return `Hold the blackout. Choices unlock in ${settings.galleryDelay.toFixed(1)}s.`;
       }
       if (settings.galleryPlayback === 'sequence') {
-        return 'Pick what happens next. Choices play one at a time.';
+        return 'Click the nearest upcoming video. Choices play one at a time.';
       }
-      return 'Pick what happens next.';
+      return 'Click the nearest upcoming video.';
     }
     if (phase === 'cueDelay' || phase === 'cuePlaying') {
       return 'Watch the prompt. Choices unlock after blackout.';
@@ -635,7 +706,10 @@ function App() {
         className="hidden-file-picker"
         type="file"
         accept="video/*,.mov,.mp4,.m4v,.webm"
-        onChange={(event) => handleFileChange(event.currentTarget.files?.[0] ?? null)}
+        onChange={(event) => {
+          handleFileChange(event.currentTarget.files?.[0] ?? null);
+          event.currentTarget.value = '';
+        }}
         aria-hidden="true"
         tabIndex={-1}
       />
@@ -659,11 +733,14 @@ function App() {
           replayEnabled={settings.replayEnabled}
           playbackRate={settings.playbackRate}
           canReveal={canRevealAnswer}
+          canReplayPrompt={settings.replayEnabled && phase === 'answering'}
+          canReplayFullAnswer={canReplayFullAnswer}
           canRestartCourse={canRestartCourse}
           canStartNext={phase === 'nextReady'}
           onClipEnded={handleCueEnded}
           onRequestFile={requestFile}
           onReplay={handleReplay}
+          onReplayFullAnswer={replayFullAnswer}
           onReveal={revealAnswer}
           onRestartCourse={restartCourseStart}
           onStartNext={startNextPrompt}
@@ -696,6 +773,7 @@ function App() {
           playback={settings.galleryPlayback}
           activeSequenceIndex={gallerySequenceIndex}
           playbackRate={settings.playbackRate}
+          loopDelay={settings.galleryLoopDelay}
           instruction={galleryInstruction}
           disabled={phase !== 'answering' || !choicesReady}
           hidden={galleryHidden}
@@ -716,6 +794,8 @@ function App() {
           settings={settings}
           duration={video.duration}
           maxForwardGapLimit={forwardGapLimit}
+          sequentialPosition={sequentialPosition}
+          sequentialPositionMax={sequentialRangeEnd}
           disabled={panelDisabled}
           collapsed={controlsCollapsed}
           onFileChange={handleFileChange}
@@ -723,6 +803,7 @@ function App() {
           onPresetChange={selectPreset}
           onSavePreset={handleSavePreset}
           onResetScore={resetScore}
+          onSequentialPositionChange={changeSequentialPosition}
           onToggleCollapsed={() => setControlsCollapsed((previous) => !previous)}
         />
       </section>

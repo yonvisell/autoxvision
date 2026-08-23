@@ -20,6 +20,9 @@ export function loadSettings(defaults: Settings): Settings {
   if (!Number.isFinite(merged.galleryDelay)) {
     merged.galleryDelay = defaults.galleryDelay;
   }
+  if (!Number.isFinite(merged.galleryLoopDelay)) {
+    merged.galleryLoopDelay = defaults.galleryLoopDelay;
+  }
   if (!Number.isFinite(merged.playbackRate)) {
     merged.playbackRate = defaults.playbackRate;
   }
@@ -32,6 +35,7 @@ export function loadSettings(defaults: Settings): Settings {
   }
   merged.minForwardGap = Math.min(MAX_RESPONSE_GAP_SECONDS, Math.max(0, merged.minForwardGap));
   merged.maxForwardGap = Math.min(MAX_RESPONSE_GAP_SECONDS, Math.max(merged.minForwardGap, merged.maxForwardGap));
+  merged.galleryLoopDelay = Math.min(10, Math.max(0, merged.galleryLoopDelay));
   merged.playbackRate = Math.min(10, Math.max(0.25, merged.playbackRate));
   if (merged.preset === 'saved' && !loadSavedPreset()) {
     merged.preset = 'custom';

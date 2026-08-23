@@ -1,6 +1,6 @@
 # AutoxVision
 
-AutoxVision is a local-first browser app for training autocross course-walk recall from a local video file. It shows a brief cue clip, hides it, and asks the driver to select the next clip from a horizontal video gallery. Correct choices reveal the continuation; incorrect choices give quick negative feedback and let the user try again.
+AutoxVision is a local-first browser app for training autocross course-walk recall from a local video file. It shows a brief prompt, hides it, and asks the driver to identify the nearest upcoming clip in a video gallery. Correct choices reveal the continuation; incorrect choices give quick negative feedback and remain available for another attempt.
 
 ## Quick start
 
@@ -19,10 +19,10 @@ The in-app `?` link opens the complete usage instructions.
 ## Basic use
 
 1. Choose a local video file (`.mov`, `.mp4`, `.m4v`, `.webm`, or any browser-playable video).
-2. Set clip duration `T` and gallery count `N`.
-3. Start a trial.
-4. Watch the cue clip in the large window.
-5. After the cue goes black, click the gallery clip that immediately follows it in the source video.
+2. Choose a recall mode, displayed prompt length, playback speed, and gallery count.
+3. Watch the prompt once in the large window.
+4. After the prompt goes black, click the gallery clip that begins nearest in course time after it.
+5. Use the prompt-through-answer replay to reinforce the connection, then start the next trial.
 6. Correct: `+1`, green cue border, bell, continuation plays in the cue window.
 7. Wrong: `-1`, red feedback, brief error sound, try again until correct.
 
@@ -30,8 +30,8 @@ The video remains local in the browser. It is not uploaded.
 
 ## UI layout
 
-- Upper cue area: large video window, near full width, about two thirds of app height by default.
-- Lower area: compact dark controls on the left; horizontal gallery on the right.
+- Upper prompt area: large video window with a horizontally collapsible notes panel.
+- Lower area: adaptive video gallery with compact, collapsible controls on the right.
 - Score and high score appear in the upper-left region.
 - A small notes field sits near the cue video, with concise helper text underneath.
 - Contextual help appears through hover text or small grey helper phrases, not on video hover.
@@ -39,15 +39,16 @@ The video remains local in the browser. It is not uploaded.
 ## Controls
 
 - Video file picker.
-- Cue length slider: cue and answer/gallery clip duration, default `10.0s`.
+- Prompt length slider: displayed prompt and continuation duration, default `10.0s`; source-video span scales with playback speed.
 - Choices slider: number of gallery items, range `2–8`, default `3`.
-- Gallery pause slider: blackout/pause before each candidate in sequence playback.
-- Preset dropdown: quick settings for encoding, learning, performance, and pressure.
-- Save preset button: stores the current control setup as the saved preset.
-- Mode dropdown: random recall, sequential recall, weak spots, and mental lap.
+- Choice wait slider: blackout before the gallery becomes active and separation between one-by-one choices.
+- Loop pause number control: delay before Hover or All play gallery clips restart, default `0.5s`.
+- Mode dropdown: Random recall mode, Sequential recall mode, Weak spots mode, and Mental lap mode.
 - Gallery playback: sequence clips one at a time by default, play clips on hover, or loop all clips.
-- Replay setting: allow cue replay and, if implemented cleanly, small replay affordances for gallery tiles without changing primary click-to-select behavior.
-- Advanced range controls: optional `t0` and `t1` bounds in seconds.
+- Sequential position slider: jump within the active Start-to-End course range.
+- Replay setting: allow prompt replay while answering; sequential mode also offers a full-answer replay after a correct reveal.
+- Start and End controls: restrict the course region used for prompts.
+- Preset dropdown at the bottom: apply built-in settings or a saved local preset without changing the active course range.
 - Sound mute and reset score.
 
 ## Notes and persistence

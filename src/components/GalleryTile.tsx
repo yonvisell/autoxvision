@@ -8,6 +8,7 @@ type GalleryTileProps = {
   playback: GalleryPlayback;
   isSequenceActive: boolean;
   playbackRate: number;
+  loopDelay: number;
   disabled: boolean;
   isWrong: boolean;
   isCorrectReveal: boolean;
@@ -21,6 +22,7 @@ export function GalleryTile({
   playback,
   isSequenceActive,
   playbackRate,
+  loopDelay,
   disabled,
   isWrong,
   isCorrectReveal,
@@ -39,23 +41,39 @@ export function GalleryTile({
     let frame = 0;
     let active = true;
     let started = false;
+    let loopTimer: number | null = null;
     const shouldPlay = playback === 'allLoop' || (playback === 'hover' && hovered) || (playback === 'sequence' && isSequenceActive);
     video.playbackRate = playbackRate;
     video.pause();
     setClipReady(false);
 
-    const tick = () => {
+    let tick: () => void;
+    const restartLoop = () => {
+      if (!active || !shouldPlay || disabled) {
+        return;
+      }
+      video.currentTime = item.clip.start;
+      void video.play().catch(() => undefined);
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    tick = () => {
       if (!active) {
         return;
       }
       if (video.currentTime >= item.clip.end - 0.015) {
         if (playback === 'allLoop' || (playback === 'hover' && shouldPlay)) {
-          video.currentTime = item.clip.start;
-          void video.play().catch(() => undefined);
+          video.pause();
+          if (loopDelay > 0) {
+            loopTimer = window.setTimeout(restartLoop, loopDelay * 1000);
+          } else {
+            restartLoop();
+          }
         } else {
           video.pause();
           video.currentTime = item.clip.end;
         }
+        return;
       }
       frame = window.requestAnimationFrame(tick);
     };
@@ -96,10 +114,13 @@ export function GalleryTile({
     return () => {
       active = false;
       window.cancelAnimationFrame(frame);
+      if (loopTimer !== null) {
+        window.clearTimeout(loopTimer);
+      }
       video.removeEventListener('loadedmetadata', seekToAssignedTime);
       video.removeEventListener('seeked', handleSeeked);
     };
-  }, [disabled, hovered, isSequenceActive, item.clip.end, item.clip.start, playback, playbackRate]);
+  }, [disabled, hovered, isSequenceActive, item.clip.end, item.clip.start, loopDelay, playback, playbackRate]);
 
   return (
     <button
@@ -110,17 +131,16 @@ export function GalleryTile({
       data-gallery-index={index}
       data-correct={item.isCorrect ? 'true' : 'false'}
       data-clip-start={item.clip.start.toFixed(3)}
-      title={`Choose continuation ${index + 1}`}
+      title={`Choose video ${index + 1} as the nearest upcoming continuation`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      aria-label={`Pick answer choice ${index + 1}`}
+      aria-label={`Choose continuation video ${index + 1}`}
     >
       <video ref={videoRef} src={videoUrl} muted playsInline preload="metadata" />
       {!clipReady || (playback === 'sequence' && !isSequenceActive) ? <span className="tile-blackout" /> : null}
       <span className="tile-number">{index + 1}</span>
-      <span className="tile-pick">Pick</span>
     </button>
   );
 }

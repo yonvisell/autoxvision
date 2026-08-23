@@ -9,6 +9,10 @@ export function roundTime(value: number, places = 3): number {
   return Math.round(value * scale) / scale;
 }
 
+export function sourceDurationForPlayback(displayDuration: number, playbackRate: number): number {
+  return roundTime(Math.max(0, displayDuration) * Math.max(0.25, playbackRate));
+}
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }

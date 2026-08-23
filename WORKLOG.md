@@ -435,6 +435,33 @@ Visual inspection:
 - Mental-lap release checks: With ignored `AAXLPM1.MOV`, a 2.5s Show answer reveal began at the prompt start, remained active across the A/B boundary, and ended after 5.0s. Sequential progression advanced `214.13s -> 216.63s`; Random starts sampled `155.37s -> 258.88s`. Verified the progression selector, title-bar help link, complete help-page layout, seven inactive mental-lap controls, and full reactivation in Random recall.
 - Public-site checks: Both live URLs returned HTTP 200. The deployed app loaded the expected production JavaScript/CSS assets, exposed the title-bar help link and Video control, and produced no browser warnings or errors. The live instructions included mental-lap timing and local-video privacy guidance with no browser warnings or errors.
 
+## 2026-08-23 displayed-time, sequential, and gallery-loop revision
+
+- Added a persisted Gallery loop pause number control, default `0.5s`, for Hover and All play. Live media sampling confirmed that a gallery video pauses at its clip end for the configured interval before seeking to its assigned start and resuming.
+- Reinterpreted Prompt length as displayed wall-clock duration. Trial source span is now `prompt length * playback speed`, so a displayed 5-second prompt remains 5 seconds at every speed while covering proportionally more source video.
+- A newly selected course now resets Start to `0`, End to automatic video end, and sequential recall to `0`. File inputs clear after selection so reselecting the same file also performs a true reset.
+- Added a mode-aware Sequential position slider spanning the active Start-to-End range. Playback clamps only when a full prompt and answer cannot fit near the selected end.
+- Added Replay full answer after a sequential reveal; it replays the continuous prompt-through-correct-continuation interval without advancing the trial.
+- Removed visible Session mode and Preset labels, appended `mode` to each mode option, moved presets below a thin divider, removed orange Pick labels, and changed the gallery instruction to `Click the nearest upcoming video.`
+- Reduced title-bar height, outer gutters, region gaps, and gallery spacing. Controls fit the default 300px deck without vertical scrolling in gallery modes; gallery tiles retain a 4px black separation and resize with the window.
+- Revised `public/help.html` around driver workflow, displayed-time semantics, sequential positioning/replay, gallery playback, shortcuts, persistence, and local-video privacy.
+
+Final command checks:
+
+- `npm install --no-audit --no-fund`: passed, dependencies already current.
+- `npm run lint`: passed.
+- `npm test -- --run`: passed, 4 files / 25 tests.
+- `npm run build`: passed; production app and help page emitted to `dist/`.
+
+Final browser checks on `127.0.0.1:5176` with ignored local `AAXLPM1.MOV`:
+
+- Verified fresh and same-file sequential loads begin at `0.0s`, clear prior Start/End bounds, and expose a position range from `0` to the `453.915s` video end.
+- Verified the 10-second prompt at 4x uses a 40-second source interval, preserving displayed duration across playback speed.
+- Verified loop pause behavior, full-answer replay, adaptive six-choice gallery sizing, thick wrong/correct feedback, and no per-tile Pick labels.
+- Verified `1` gallery selection, `Space`/`R` next-prompt progression, `P` mental-lap reveal, and `M` sound toggle.
+- Verified compact desktop and mobile layouts without horizontal overflow; corrected the mobile title bar to remain one row.
+- Verified the revised help page and app produced no browser warnings or errors.
+
 ## Remaining limitations
 
 List only real limitations that remain at handoff.

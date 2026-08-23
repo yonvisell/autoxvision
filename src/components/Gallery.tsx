@@ -8,6 +8,7 @@ type GalleryProps = {
   playback: GalleryPlayback;
   activeSequenceIndex: number | null;
   playbackRate: number;
+  loopDelay: number;
   instruction: string;
   disabled: boolean;
   hidden: boolean;
@@ -31,6 +32,7 @@ export function Gallery({
   playback,
   activeSequenceIndex,
   playbackRate,
+  loopDelay,
   instruction,
   disabled,
   hidden,
@@ -123,6 +125,7 @@ export function Gallery({
             playback={playback}
             isSequenceActive={playback !== 'sequence' || activeSequenceIndex === index}
             playbackRate={playbackRate}
+            loopDelay={loopDelay}
             disabled={disabled}
             isWrong={wrongIds.has(item.id)}
             isCorrectReveal={revealCorrect && item.isCorrect}

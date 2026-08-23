@@ -41,6 +41,7 @@ export type Settings = {
   preset: Preset;
   galleryPlayback: GalleryPlayback;
   galleryDelay: number;
+  galleryLoopDelay: number;
   minForwardGap: number;
   maxForwardGap: number;
   playbackRate: number;

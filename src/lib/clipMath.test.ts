@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { clampT1, clip, clipsOverlap, isVideoLongEnough, maxForwardGapLimit } from './clipMath';
+import {
+  clampT1,
+  clip,
+  clipsOverlap,
+  isVideoLongEnough,
+  maxForwardGapLimit,
+  sourceDurationForPlayback
+} from './clipMath';
 
 describe('clipMath', () => {
   it('clamps t1 so cue and answer fit', () => {
@@ -26,5 +33,12 @@ describe('clipMath', () => {
   it('detects clip overlap with guard intervals', () => {
     expect(clipsOverlap(clip(0, 1), clip(1.2, 1), 0.1)).toBe(false);
     expect(clipsOverlap(clip(0, 1), clip(1.05, 1), 0.1)).toBe(true);
+  });
+
+  it('scales source-video span to preserve the displayed prompt duration', () => {
+    expect(sourceDurationForPlayback(5, 0.5)).toBe(2.5);
+    expect(sourceDurationForPlayback(5, 1)).toBe(5);
+    expect(sourceDurationForPlayback(5, 4)).toBe(20);
+    expect(sourceDurationForPlayback(5, 10)).toBe(50);
   });
 });

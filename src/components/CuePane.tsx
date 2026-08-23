@@ -8,11 +8,14 @@ type CuePaneProps = {
   replayEnabled: boolean;
   playbackRate: number;
   canReveal: boolean;
+  canReplayPrompt: boolean;
+  canReplayFullAnswer: boolean;
   canRestartCourse: boolean;
   canStartNext: boolean;
   onClipEnded: () => void;
   onRequestFile: () => void;
   onReplay: () => void;
+  onReplayFullAnswer: () => void;
   onReveal: () => void;
   onRestartCourse: () => void;
   onStartNext: () => void;
@@ -25,11 +28,14 @@ export function CuePane({
   replayEnabled,
   playbackRate,
   canReveal,
+  canReplayPrompt,
+  canReplayFullAnswer,
   canRestartCourse,
   canStartNext,
   onClipEnded,
   onRequestFile,
   onReplay,
+  onReplayFullAnswer,
   onReveal,
   onRestartCourse,
   onStartNext
@@ -139,11 +145,21 @@ export function CuePane({
           className="cue-action cue-action-secondary"
           type="button"
           onClick={onReplay}
-          disabled={!replayEnabled || !videoUrl}
-          title="Replay the prompt clip before choosing"
+          disabled={!videoUrl || (!canStartNext && !canReplayPrompt)}
+          title={canStartNext ? 'Start the next prompt' : 'Replay the prompt clip before choosing'}
         >
-          Replay prompt
+          {canStartNext ? 'Next prompt' : 'Replay prompt'}
         </button>
+        {canReplayFullAnswer ? (
+          <button
+            className="cue-action cue-action-secondary"
+            type="button"
+            onClick={onReplayFullAnswer}
+            title="Replay the complete prompt-through-answer sequence"
+          >
+            Replay full answer
+          </button>
+        ) : null}
         {canRestartCourse ? (
           <button
             className="cue-action cue-action-secondary"
