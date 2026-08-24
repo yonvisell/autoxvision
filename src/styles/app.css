@@ -227,6 +227,18 @@ textarea:disabled {
   font-size: 0.82rem;
 }
 
+.blackout-copy {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+
+.blackout-copy small {
+  color: #526071;
+  font-size: 0.62rem;
+  font-weight: 500;
+}
+
 .cue-actions {
   display: grid;
   grid-auto-rows: min-content;

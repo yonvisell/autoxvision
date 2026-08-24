@@ -553,13 +553,21 @@ function App() {
         event.preventDefault();
         revealAnswer();
       }
+      if (event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        revealAnswer();
+      }
+      if (event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        restartCourseStart();
+      }
       if (event.key.toLowerCase() === 'm') {
         setSettings((previous) => markCustom(previous, { soundEnabled: !previous.soundEnabled }));
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleSelect, handleReplay, revealAnswer, trial]);
+  }, [handleSelect, handleReplay, restartCourseStart, revealAnswer, trial]);
 
   useEffect(() => {
     if (phase !== 'answering' || !trial || trial.gallery.length === 0) {
@@ -671,9 +679,9 @@ function App() {
         return `Hold the blackout. Choices unlock in ${settings.galleryDelay.toFixed(1)}s.`;
       }
       if (settings.galleryPlayback === 'sequence') {
-        return 'Click the nearest upcoming video. Choices play one at a time.';
+        return 'Click the nearest upcoming video. (keys: 1, 2, ...) Choices play one at a time.';
       }
-      return 'Click the nearest upcoming video.';
+      return 'Click the nearest upcoming video. (keys: 1, 2, ...)';
     }
     if (phase === 'cueDelay' || phase === 'cuePlaying') {
       return 'Watch the prompt. Choices unlock after blackout.';
@@ -687,7 +695,7 @@ function App() {
     return '';
   }, [choicesReady, phase, settings.galleryDelay, settings.galleryPlayback, trial]);
   const bottomInstruction =
-    video.error || status.message || galleryInstruction || (!video.url ? 'Click the prompt or choose Video to load a local file.' : '');
+    video.error || status.message || (!video.url ? 'Click the prompt or choose Video to load a local file.' : '');
 
   return (
     <main
@@ -809,7 +817,7 @@ function App() {
       </section>
       <div className="bottom-help" aria-label="Instructions and hotkeys">
         <span>{bottomInstruction}</span>
-        <span>1-8 choose | Space/R prompt/next | P/Enter answer | M mute</span>
+        <span>1-8 choose | Space/R prompt/next | A/P/Enter answer | S course start | M mute</span>
       </div>
     </main>
   );

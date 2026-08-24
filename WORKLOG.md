@@ -462,6 +462,14 @@ Final browser checks on `127.0.0.1:5176` with ignored local `AAXLPM1.MOV`:
 - Verified compact desktop and mobile layouts without horizontal overflow; corrected the mobile title bar to remain one row.
 - Verified the revised help page and app produced no browser warnings or errors.
 
+## 2026-08-24 shortcut-label follow-up
+
+- Added concise visible shortcut labels to Replay prompt (`R`), Course start (`S`), Show answer (`A`), the next-prompt blackout (`Space`), and the gallery-choice instruction (`1, 2, ...`).
+- Added functional `A` and `S` keyboard handlers while retaining the existing answer and course-navigation controls.
+- Removed the duplicate gallery instruction from the persistent bottom strip and updated the notes shortcut line and help page.
+- `npm run lint`, `npm test -- --run` (25 tests), and `npm run build` passed.
+- Browser checks with a local 30-second H.264 test video verified `A` reveal, `S` course restart, the next-prompt Space hint, exactly one gallery instruction, label fit, and no console warnings or errors.
+
 ## Remaining limitations
 
 List only real limitations that remain at handoff.

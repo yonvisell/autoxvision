@@ -136,7 +136,12 @@ export function CuePane({
         ) : null}
         {!showVideo ? (
           <div className="blackout">
-            {blackoutText ? <span>{blackoutText}</span> : null}
+            {blackoutText ? (
+              <span className="blackout-copy">
+                <span>{blackoutText}</span>
+                {phase === 'nextReady' ? <small>(key: space)</small> : null}
+              </span>
+            ) : null}
           </div>
         ) : null}
       </button>
@@ -148,7 +153,7 @@ export function CuePane({
           disabled={!videoUrl || (!canStartNext && !canReplayPrompt)}
           title={canStartNext ? 'Start the next prompt' : 'Replay the prompt clip before choosing'}
         >
-          {canStartNext ? 'Next prompt' : 'Replay prompt'}
+          {canStartNext ? 'Next prompt' : 'Replay prompt (R)'}
         </button>
         {canReplayFullAnswer ? (
           <button
@@ -168,7 +173,7 @@ export function CuePane({
             disabled={!videoUrl}
             title="Restart sequential or mental-lap practice from the course start"
           >
-            Course start
+            Course start (S)
           </button>
         ) : null}
         <button
@@ -178,7 +183,7 @@ export function CuePane({
           disabled={!videoUrl || !canReveal}
           title="Reveal and play the correct continuation"
         >
-          Show answer
+          Show answer (A)
         </button>
         {playError ? <span className="inline-warn">{playError}</span> : null}
       </div>
