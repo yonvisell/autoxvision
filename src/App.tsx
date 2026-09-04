@@ -26,11 +26,18 @@ import {
   saveStats
 } from './lib/persistence';
 import { playTone } from './lib/sounds';
-import { createTrial, updateAnchorStats } from './lib/trialEngine';
+import {
+  addMissOnce,
+  createTrial,
+  isFirstTrialOutcome,
+  nextSequentialCueStart,
+  updateAnchorStats
+} from './lib/trialEngine';
+import type { TrialSettings } from './lib/trialEngine';
 import { fingerprintFile } from './lib/videoFingerprint';
 import { savedPresetPayload } from './lib/presets';
 import { nearestAnnotation, upsertAnnotation } from './lib/annotations';
-import type { AnchorStats, Annotation, GalleryItem, Settings, Trial } from './types';
+import type { AnchorStats, Annotation, GalleryItem, MissAttempt, Settings, Trial } from './types';
 
 type Phase = 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing' | 'nextReady';
 type VideoState = {
@@ -39,12 +46,6 @@ type VideoState = {
   fingerprint: string;
   duration: number | null;
   error: string;
-};
-
-type MissAttempt = {
-  id: string;
-  trial: Trial;
-  resolved: boolean;
 };
 
 const cueDelayMs = 250;
@@ -86,20 +87,34 @@ function App() {
   const reactionStartRef = useRef<number>(0);
   const timeoutRef = useRef<number | null>(null);
   const statsRef = useRef<Record<string, AnchorStats>>({});
+  const committedOutcomeTrialIdRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const sourceClipDuration = sourceDurationForPlayback(settings.T, settings.playbackRate);
   const forwardGapLimit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, sourceClipDuration));
   const effectiveMinForwardGap = Math.min(settings.minForwardGap, forwardGapLimit);
   const effectiveMaxForwardGap = Math.min(Math.max(settings.maxForwardGap, effectiveMinForwardGap), forwardGapLimit);
   const requiredForwardGap = settings.mode === 'mentalLap' ? 0 : effectiveMinForwardGap;
-  const effectiveTrialSettings = useMemo<Settings>(
+  const effectiveTrialSettings = useMemo<TrialSettings>(
     () => ({
-      ...settings,
       T: sourceClipDuration,
+      N: settings.N,
+      mode: settings.mode,
+      mentalLapOrder: settings.mentalLapOrder,
       minForwardGap: effectiveMinForwardGap,
-      maxForwardGap: effectiveMaxForwardGap
+      maxForwardGap: effectiveMaxForwardGap,
+      t0: settings.t0,
+      t1: settings.t1
     }),
-    [effectiveMaxForwardGap, effectiveMinForwardGap, settings, sourceClipDuration]
+    [
+      effectiveMaxForwardGap,
+      effectiveMinForwardGap,
+      settings.N,
+      settings.mentalLapOrder,
+      settings.mode,
+      settings.t0,
+      settings.t1,
+      sourceClipDuration
+    ]
   );
 
   const canRunTrial = Boolean(
@@ -254,6 +269,7 @@ function App() {
         forcedCueStart
       });
       setTrial(nextTrial);
+      committedOutcomeTrialIdRef.current = null;
       setWrongIds(new Set());
       setActiveMissId(null);
       setChoicesReady(false);
@@ -279,8 +295,17 @@ function App() {
     if (!trial && lastCueStart === null) {
       return;
     }
+    if (settings.mode === 'sequential' && trial) {
+      const nextCueStart = nextSequentialCueStart(
+        trial.answer.start,
+        effectiveTrialSettings.t0,
+        sequentialCueStartMax
+      );
+      beginTrial(null, nextCueStart);
+      return;
+    }
     beginTrial(trial?.cueStart ?? lastCueStart);
-  }, [beginTrial, lastCueStart, trial]);
+  }, [beginTrial, effectiveTrialSettings.t0, lastCueStart, sequentialCueStartMax, settings.mode, trial]);
 
   useEffect(() => {
     if (!video.url || video.duration === null || video.error) {
@@ -329,6 +354,7 @@ function App() {
       error: ''
     });
     setTrial(null);
+    committedOutcomeTrialIdRef.current = null;
     setPhase('idle');
     setScore(0);
     setLastCueStart(null);
@@ -486,10 +512,14 @@ function App() {
       }
 
       const reactionMs = performance.now() - reactionStartRef.current;
+      const shouldRecordOutcome = !activeMissId && isFirstTrialOutcome(committedOutcomeTrialIdRef.current, trial.id);
+      if (shouldRecordOutcome) {
+        committedOutcomeTrialIdRef.current = trial.id;
+        setStats((previous) => updateAnchorStats(previous, trial.cueStart, item.isCorrect, reactionMs));
+      }
       if (item.isCorrect) {
         if (!activeMissId) {
           updateScore(1);
-          setStats((previous) => updateAnchorStats(previous, trial.cueStart, true, reactionMs));
         }
         playTone('correct', settings.soundEnabled);
         if (activeMissId) {
@@ -509,17 +539,9 @@ function App() {
         setWrongIds((previous) => new Set(previous).add(id));
         if (!activeMissId) {
           updateScore(-1);
-          setStats((previous) => updateAnchorStats(previous, trial.cueStart, false, reactionMs));
-          setMissHistory((previous) =>
-            [
-              {
-                id: `miss-${trial.id}-${Date.now()}`,
-                trial,
-                resolved: false
-              },
-              ...previous
-            ].slice(0, 8)
-          );
+          if (shouldRecordOutcome) {
+            setMissHistory((previous) => addMissOnce(previous, trial));
+          }
         }
         setStatus({ message: activeMissId ? 'Still not it. Try the miss again.' : 'Not that one. Try again.', tone: 'bad' });
       }
@@ -643,6 +665,7 @@ function App() {
       window.clearTimeout(timeoutRef.current);
     }
     setTrial(miss.trial);
+    committedOutcomeTrialIdRef.current = miss.trial.id;
     setWrongIds(new Set());
     setActiveMissId(miss.id);
     setChoicesReady(false);
@@ -740,6 +763,7 @@ function App() {
           phase={phase}
           replayEnabled={settings.replayEnabled}
           playbackRate={settings.playbackRate}
+          promptMask={settings}
           canReveal={canRevealAnswer}
           canReplayPrompt={settings.replayEnabled && phase === 'answering'}
           canReplayFullAnswer={canReplayFullAnswer}

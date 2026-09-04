@@ -470,12 +470,40 @@ Final browser checks on `127.0.0.1:5176` with ignored local `AAXLPM1.MOV`:
 - `npm run lint`, `npm test -- --run` (25 tests), and `npm run build` passed.
 - Browser checks with a local 30-second H.264 test video verified `A` reveal, `S` course restart, the next-prompt Space hint, exactly one gallery instruction, label fit, and no console warnings or errors.
 
+## 2026-09-04 sequential, Weak Spots, and prompt-masking revision
+
+- Sequential Recall now starts each next prompt at the actual sampled correct-continuation start. If that continuation cannot serve as a complete prompt within the active course range, progression wraps to the active Start value instead of clamping backward.
+- Weak Spots records one adaptive result per trial, determined by the first committed gallery choice. Additional wrong choices do not add attempts or miss-history entries, a later correct choice does not add a second adaptive result, and retrying a stored miss resolves that existing entry without changing adaptive statistics.
+- Weak-spot sampling now uses first-answer miss rate as its weighting signal; reaction time and presentation recency remain stored but do not affect sampling weight.
+- Added persisted prompt-only masking controls for lower-frame blur and black fade. Each effect has an enable checkbox, strength/level slider, and 0-100% height slider. Combined effects place blur beneath fade.
+- Prompt masks apply to ordinary prompt playback and explicit prompt replay. Gallery videos and prompt-through-answer reveals remain clear. Built-in presets preserve the active mask configuration; Saved preset includes it.
+- Updated the help page and README to describe the revised progression, adaptive accounting, and mask boundaries.
+
+Final command checks:
+
+- `npm install --no-audit --no-fund`: passed, dependencies already current.
+- `npm run lint`: passed.
+- `npm test -- --run`: passed, 6 files / 35 tests.
+- `npm run build`: passed; production app and help page emitted to `dist/`.
+- `git diff --check`: passed.
+
+Browser checks on `127.0.0.1:5175` with an ignored local 30-second H.264 video:
+
+- Verified combined blur/fade overlays in Random, Sequential, Weak Spots, and Mental Lap modes; no mask element appeared in any gallery tile.
+- Verified explicit Replay prompt applies both masks, while Show answer and correct prompt-through-answer playback remove both masks, including over the prompt portion.
+- Verified built-in preset selection retained mask settings, Saved preset restored them after edits, and settings survived a page reload. Disabled effect sliders remained visible and legible.
+- Verified Sequential Recall advanced from `0.00s` to the sampled correct start at `9.78s`, not to a nominal prompt-plus-gap position.
+- Verified two wrong clicks in one Weak Spots trial changed the score twice but created one miss-history item; retrying and solving it marked that item resolved.
+- Verified `1`, `Space`, `R`, `A`, `S`, and `M` keyboard controls against live drill state.
+- Verified the revised instructions page visually and observed no browser warnings or errors.
+- Component coverage verifies mask suppression at zero strength/height, rendering at 50% and 100% height, and suppression throughout answering and reveal phases.
+
 ## Remaining limitations
 
 List only real limitations that remain at handoff.
 
 - Direct playback of `.mov` depends on the browser and the video codec. Decode failures are shown inline.
-- Weak-spots mode is intentionally lightweight: it falls back to random until at least three anchor stats exist, then biases recent wrong/slow anchors.
+- Weak-spots mode is intentionally lightweight: it falls back to random until at least three anchor stats exist, then biases anchors by first-answer miss rate.
 - This project requires Node >=20. The local default Node on this machine is v11.14.0, so use a modern Node on `PATH` for npm commands.
 - Notes export/import pure functions are still tested, but visible import/export controls were removed from the main UI per user preference.
 

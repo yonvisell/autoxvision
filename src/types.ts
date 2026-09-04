@@ -18,6 +18,12 @@ export type Trial = {
   createdAt: number;
 };
 
+export type MissAttempt = {
+  id: string;
+  trial: Trial;
+  resolved: boolean;
+};
+
 export type Annotation = {
   id: string;
   videoFingerprint: string;
@@ -47,6 +53,12 @@ export type Settings = {
   playbackRate: number;
   replayEnabled: boolean;
   soundEnabled: boolean;
+  promptBlurEnabled: boolean;
+  promptBlurStrength: number;
+  promptBlurHeight: number;
+  promptFadeEnabled: boolean;
+  promptFadeLevel: number;
+  promptFadeHeight: number;
   t0: number;
   t1: number | null;
 };

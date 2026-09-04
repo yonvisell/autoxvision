@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Clip } from '../types';
+import type { Clip, Settings } from '../types';
+
+type PromptMaskSettings = Pick<
+  Settings,
+  | 'promptBlurEnabled'
+  | 'promptBlurStrength'
+  | 'promptBlurHeight'
+  | 'promptFadeEnabled'
+  | 'promptFadeLevel'
+  | 'promptFadeHeight'
+>;
 
 type CuePaneProps = {
   videoUrl: string | null;
@@ -7,6 +17,7 @@ type CuePaneProps = {
   phase: 'idle' | 'cueDelay' | 'cuePlaying' | 'answering' | 'revealing' | 'nextReady';
   replayEnabled: boolean;
   playbackRate: number;
+  promptMask: PromptMaskSettings;
   canReveal: boolean;
   canReplayPrompt: boolean;
   canReplayFullAnswer: boolean;
@@ -27,6 +38,7 @@ export function CuePane({
   phase,
   replayEnabled,
   playbackRate,
+  promptMask,
   canReveal,
   canReplayPrompt,
   canReplayFullAnswer,
@@ -45,6 +57,16 @@ export function CuePane({
   const [playError, setPlayError] = useState('');
   const showVideo = Boolean(videoUrl && clip && (phase === 'cuePlaying' || phase === 'revealing'));
   const isReveal = phase === 'revealing';
+  const showPromptBlur =
+    phase === 'cuePlaying' &&
+    promptMask.promptBlurEnabled &&
+    promptMask.promptBlurStrength > 0 &&
+    promptMask.promptBlurHeight > 0;
+  const showPromptFade =
+    phase === 'cuePlaying' &&
+    promptMask.promptFadeEnabled &&
+    promptMask.promptFadeLevel > 0 &&
+    promptMask.promptFadeHeight > 0;
   const blackoutText = phase === 'idle' ? 'Choose a video to begin' : phase === 'nextReady' ? 'Click for next prompt' : '';
 
   useEffect(() => {
@@ -133,6 +155,27 @@ export function CuePane({
       >
         {videoUrl ? (
           <video ref={videoRef} src={videoUrl} playsInline muted={phase === 'cuePlaying'} preload="metadata" />
+        ) : null}
+        {showPromptBlur ? (
+          <span
+            className="prompt-mask prompt-mask-blur"
+            aria-hidden="true"
+            style={{
+              height: `${promptMask.promptBlurHeight}%`,
+              backdropFilter: `blur(${promptMask.promptBlurStrength}px)`,
+              WebkitBackdropFilter: `blur(${promptMask.promptBlurStrength}px)`
+            }}
+          />
+        ) : null}
+        {showPromptFade ? (
+          <span
+            className="prompt-mask prompt-mask-fade"
+            aria-hidden="true"
+            style={{
+              height: `${promptMask.promptFadeHeight}%`,
+              backgroundColor: `rgba(0, 0, 0, ${promptMask.promptFadeLevel / 100})`
+            }}
+          />
         ) : null}
         {!showVideo ? (
           <div className="blackout">

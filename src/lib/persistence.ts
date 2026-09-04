@@ -1,5 +1,6 @@
 import type { AnchorStats, Annotation, Mode, Settings } from '../types';
 import { MAX_RESPONSE_GAP_SECONDS } from './clipMath';
+import { MAX_PROMPT_BLUR_PX } from './presets';
 
 const prefix = 'autoxvision:v1';
 
@@ -37,6 +38,12 @@ export function loadSettings(defaults: Settings): Settings {
   merged.maxForwardGap = Math.min(MAX_RESPONSE_GAP_SECONDS, Math.max(merged.minForwardGap, merged.maxForwardGap));
   merged.galleryLoopDelay = Math.min(10, Math.max(0, merged.galleryLoopDelay));
   merged.playbackRate = Math.min(10, Math.max(0.25, merged.playbackRate));
+  merged.promptBlurEnabled = merged.promptBlurEnabled === true;
+  merged.promptBlurStrength = clampNumber(merged.promptBlurStrength, defaults.promptBlurStrength, 0, MAX_PROMPT_BLUR_PX);
+  merged.promptBlurHeight = clampNumber(merged.promptBlurHeight, defaults.promptBlurHeight, 0, 100);
+  merged.promptFadeEnabled = merged.promptFadeEnabled === true;
+  merged.promptFadeLevel = clampNumber(merged.promptFadeLevel, defaults.promptFadeLevel, 0, 100);
+  merged.promptFadeHeight = clampNumber(merged.promptFadeHeight, defaults.promptFadeHeight, 0, 100);
   if (merged.preset === 'saved' && !loadSavedPreset()) {
     merged.preset = 'custom';
   }
@@ -98,4 +105,9 @@ function write(key: string, value: unknown): void {
   } catch {
     // Best-effort local persistence should never block the drill.
   }
+}
+
+function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
+  const number = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return Math.min(max, Math.max(min, number));
 }

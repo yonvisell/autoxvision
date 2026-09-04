@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { MAX_PROMPT_BLUR_PX } from '../lib/presets';
 import type { GalleryPlayback, MentalLapOrder, Mode, Preset, Settings } from '../types';
 
 type ControlPanelProps = {
@@ -158,6 +159,87 @@ export function ControlPanel({
           />
         </label>
       </div>
+
+      <details className="prompt-mask-controls">
+        <summary title="Mask the lower portion of prompt playback only">Prompt masking</summary>
+        <div className="prompt-mask-grid">
+          <section className="prompt-mask-effect" aria-label="Prompt blur controls">
+            <label className="prompt-mask-toggle" title="Blur upward from the bottom of the prompt video">
+              <input
+                type="checkbox"
+                checked={settings.promptBlurEnabled}
+                disabled={disabled}
+                onChange={(event) => applyCustom({ promptBlurEnabled: event.currentTarget.checked })}
+              />
+              Blur lower frame
+            </label>
+            <label className={!settings.promptBlurEnabled ? 'inactive-control' : ''}>
+              <span>Strength <strong>{settings.promptBlurStrength.toFixed(0)}px</strong></span>
+              <input
+                aria-label="Prompt blur strength"
+                type="range"
+                min="0"
+                max={MAX_PROMPT_BLUR_PX}
+                step="1"
+                value={settings.promptBlurStrength}
+                disabled={disabled || !settings.promptBlurEnabled}
+                onChange={(event) => applyCustom({ promptBlurStrength: Number(event.currentTarget.value) })}
+              />
+            </label>
+            <label className={!settings.promptBlurEnabled ? 'inactive-control' : ''}>
+              <span>Blurred height <strong>{settings.promptBlurHeight.toFixed(0)}%</strong></span>
+              <input
+                aria-label="Prompt blurred height"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={settings.promptBlurHeight}
+                disabled={disabled || !settings.promptBlurEnabled}
+                onChange={(event) => applyCustom({ promptBlurHeight: Number(event.currentTarget.value) })}
+              />
+            </label>
+          </section>
+
+          <section className="prompt-mask-effect" aria-label="Prompt fade controls">
+            <label className="prompt-mask-toggle" title="Darken upward from the bottom of the prompt video">
+              <input
+                type="checkbox"
+                checked={settings.promptFadeEnabled}
+                disabled={disabled}
+                onChange={(event) => applyCustom({ promptFadeEnabled: event.currentTarget.checked })}
+              />
+              Fade lower frame
+            </label>
+            <label className={!settings.promptFadeEnabled ? 'inactive-control' : ''}>
+              <span>Black level <strong>{settings.promptFadeLevel.toFixed(0)}%</strong></span>
+              <input
+                aria-label="Prompt black level"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={settings.promptFadeLevel}
+                disabled={disabled || !settings.promptFadeEnabled}
+                onChange={(event) => applyCustom({ promptFadeLevel: Number(event.currentTarget.value) })}
+              />
+            </label>
+            <label className={!settings.promptFadeEnabled ? 'inactive-control' : ''}>
+              <span>Faded height <strong>{settings.promptFadeHeight.toFixed(0)}%</strong></span>
+              <input
+                aria-label="Prompt faded height"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={settings.promptFadeHeight}
+                disabled={disabled || !settings.promptFadeEnabled}
+                onChange={(event) => applyCustom({ promptFadeHeight: Number(event.currentTarget.value) })}
+              />
+            </label>
+          </section>
+        </div>
+      </details>
 
       <div className="playback-controls">
         <div className={`segmented${galleryControlsInactive ? ' inactive-control' : ''}`} aria-label="Gallery playback">

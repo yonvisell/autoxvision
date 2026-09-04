@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { createTrial, sampleUniform, updateAnchorStats } from './trialEngine';
+import {
+  addMissOnce,
+  createTrial,
+  isFirstTrialOutcome,
+  nextSequentialCueStart,
+  sampleUniform,
+  updateAnchorStats,
+  weakSpotWeight
+} from './trialEngine';
 import { defaultSettings } from './presets';
 
 describe('trialEngine', () => {
@@ -84,7 +92,7 @@ describe('trialEngine', () => {
       const trial = createTrial({
         duration: 360,
         settings: { ...defaultSettings, mode: index % 2 === 0 ? 'random' : 'sequential', T, N: 8, minForwardGap, maxForwardGap },
-        previousCueStart: index % 2 === 0 ? null : 90,
+        forcedCueStart: index % 2 === 0 ? null : 90,
         random
       });
       const correct = trial.gallery.find((item) => item.isCorrect);
@@ -104,7 +112,7 @@ describe('trialEngine', () => {
     const values = [0.5, 0.2, 0.85, 0.4, 0.92, 0.7, 0.15, 0.6, 0.25, 0.95];
     const trial = createTrial({
       duration: 150,
-      previousCueStart: 40,
+      forcedCueStart: 43,
       settings: { ...defaultSettings, mode: 'sequential', T: 2, N: 4, minForwardGap: 1, maxForwardGap: 5 },
       random: () => values[i++ % values.length]
     });
@@ -151,14 +159,28 @@ describe('trialEngine', () => {
     expect(gap).toBeLessThanOrEqual(30.001);
   });
 
-  it('advances sequential mode by prompt length plus the minimum forward gap when possible', () => {
-    const trial = createTrial({
-      duration: 20,
-      previousCueStart: 4,
-      settings: { ...defaultSettings, mode: 'sequential', T: 0.5, minForwardGap: 1, maxForwardGap: 2 },
-      random: () => 0
+  it('advances sequential mode from the sampled answer start with a nonzero gap range', () => {
+    const first = createTrial({
+      duration: 80,
+      forcedCueStart: 4,
+      settings: { ...defaultSettings, mode: 'sequential', T: 1, N: 3, minForwardGap: 2, maxForwardGap: 8 },
+      random: () => 0.75
     });
-    expect(trial.cueStart).toBe(5.5);
+    const nextStart = nextSequentialCueStart(first.answer.start, 0, 69);
+    const second = createTrial({
+      duration: 80,
+      forcedCueStart: nextStart,
+      settings: { ...defaultSettings, mode: 'sequential', T: 1, N: 3, minForwardGap: 2, maxForwardGap: 8 },
+      random: () => 0.25
+    });
+
+    expect(first.answer.start).toBeGreaterThan(first.cue.end);
+    expect(second.cueStart).toBe(first.answer.start);
+    expect(second.cueStart).toBeGreaterThanOrEqual(first.answer.start);
+  });
+
+  it('wraps sequential progression to the active course start instead of clamping backward', () => {
+    expect(nextSequentialCueStart(72, 5, 69)).toBe(5);
   });
 
   it('can force progressive modes back to the course start', () => {
@@ -207,5 +229,50 @@ describe('trialEngine', () => {
     expect(stat.t).toBe(1);
     expect(stat.wrongs).toBe(1);
     expect(stat.attempts).toBe(1);
+  });
+
+  it('records only the first committed answer for a trial', () => {
+    const trial = createTrial({
+      duration: 80,
+      forcedCueStart: 10,
+      settings: { ...defaultSettings, T: 1, N: 3 },
+      random: () => 0.5
+    });
+    let committedTrialId: string | null = null;
+    let stats = {};
+
+    for (const wasCorrect of [false, false, true]) {
+      if (isFirstTrialOutcome(committedTrialId, trial.id)) {
+        stats = updateAnchorStats(stats, trial.cueStart, wasCorrect, 900);
+        committedTrialId = trial.id;
+      }
+    }
+
+    expect(Object.values(stats)).toEqual([
+      expect.objectContaining({ attempts: 1, wrongs: 1, corrects: 0 })
+    ]);
+  });
+
+  it('does not add duplicate miss-history entries for repeated wrong selections', () => {
+    const trial = createTrial({
+      duration: 80,
+      forcedCueStart: 10,
+      settings: { ...defaultSettings, T: 1, N: 3 },
+      random: () => 0.5
+    });
+    const once = addMissOnce([], trial, 100);
+    const repeated = addMissOnce(once, trial, 200);
+
+    expect(repeated).toHaveLength(1);
+    expect(repeated[0].id).toContain('-100');
+  });
+
+  it('weights weak spots by miss rate rather than reaction time or recency', () => {
+    const base = { t: 10, attempts: 4, wrongs: 2, corrects: 2, totalReactionMs: 1000, lastSeenAt: 0 };
+    const contaminated = { ...base, totalReactionMs: 100_000, lastSeenAt: Date.now() };
+    const harder = { ...base, wrongs: 4, corrects: 0 };
+
+    expect(weakSpotWeight(contaminated)).toBe(weakSpotWeight(base));
+    expect(weakSpotWeight(harder)).toBeGreaterThan(weakSpotWeight(base));
   });
 });

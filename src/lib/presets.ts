@@ -1,5 +1,7 @@
 import type { Preset, Settings } from '../types';
 
+export const MAX_PROMPT_BLUR_PX = 60;
+
 export const defaultSettings: Settings = {
   T: 10,
   N: 3,
@@ -14,6 +16,12 @@ export const defaultSettings: Settings = {
   playbackRate: 4,
   replayEnabled: true,
   soundEnabled: true,
+  promptBlurEnabled: false,
+  promptBlurStrength: 24,
+  promptBlurHeight: 50,
+  promptFadeEnabled: false,
+  promptFadeLevel: 70,
+  promptFadeHeight: 50,
   t0: 0,
   t1: null
 };
@@ -59,6 +67,12 @@ export function savedPresetPayload(settings: Settings): Partial<Settings> {
     maxForwardGap: settings.maxForwardGap,
     playbackRate: settings.playbackRate,
     replayEnabled: settings.replayEnabled,
-    soundEnabled: settings.soundEnabled
+    soundEnabled: settings.soundEnabled,
+    promptBlurEnabled: settings.promptBlurEnabled,
+    promptBlurStrength: settings.promptBlurStrength,
+    promptBlurHeight: settings.promptBlurHeight,
+    promptFadeEnabled: settings.promptFadeEnabled,
+    promptFadeLevel: settings.promptFadeLevel,
+    promptFadeHeight: settings.promptFadeHeight
   };
 }

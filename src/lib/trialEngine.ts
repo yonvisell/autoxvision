@@ -1,5 +1,5 @@
 import { EPS, anchorTime, clampT1, clip, isVideoLongEnough, maxForwardGapLimit, roundTime } from './clipMath';
-import type { AnchorStats, GalleryItem, Mode, Settings, Trial } from '../types';
+import type { AnchorStats, GalleryItem, MissAttempt, Mode, Settings, Trial } from '../types';
 
 type Random = () => number;
 type TimeInterval = { start: number; end: number };
@@ -8,12 +8,17 @@ const REMOTE_DISTRACTOR_GAP_SECONDS = 10;
 
 export type TrialContext = {
   duration: number;
-  settings: Settings;
+  settings: TrialSettings;
   stats?: Record<string, AnchorStats>;
   previousCueStart?: number | null;
   forcedCueStart?: number | null;
   random?: Random;
 };
+
+export type TrialSettings = Pick<
+  Settings,
+  'T' | 'N' | 'mode' | 'mentalLapOrder' | 'minForwardGap' | 'maxForwardGap' | 't0' | 't1'
+>;
 
 export function createTrial({
   duration,
@@ -30,7 +35,7 @@ export function createTrial({
   const cueStart =
     forcedCueStart !== null && Number.isFinite(forcedCueStart)
       ? roundTime(Math.min(t1, Math.max(t0, forcedCueStart)))
-      : pickCueStart(settings.mode, settings.mentalLapOrder, t0, t1, settings.T, forwardGap.min, stats, previousCueStart, random);
+      : pickCueStart(settings.mode, settings.mentalLapOrder, t0, t1, settings.T, stats, previousCueStart, random);
   const cue = clip(cueStart, settings.T);
   const gallery =
     settings.mode === 'mentalLap'
@@ -69,14 +74,13 @@ function pickCueStart(
   t0: number,
   t1: number,
   T: number,
-  minForwardGap: number,
   stats: Record<string, AnchorStats>,
   previousCueStart: number | null,
   random: Random
 ): number {
-  if (mode === 'sequential' || (mode === 'mentalLap' && mentalLapOrder === 'sequential')) {
+  if (mode === 'mentalLap' && mentalLapOrder === 'sequential') {
     if (previousCueStart !== null && Number.isFinite(previousCueStart)) {
-      const next = previousCueStart + T + (mode === 'mentalLap' ? 0 : minForwardGap);
+      const next = previousCueStart + T;
       if (next <= t1) {
         return roundTime(next);
       }
@@ -93,7 +97,7 @@ function pickCueStart(
   return sampleUniform(t0, t1, random);
 }
 
-function normalizeForwardGapRange(settings: Settings, duration: number): { min: number; max: number } {
+function normalizeForwardGapRange(settings: TrialSettings, duration: number): { min: number; max: number } {
   const limit = maxForwardGapLimit(duration, settings.T);
   const min = Math.min(limit, Math.max(0, settings.minForwardGap));
   const visibleMax = Math.min(limit, Math.max(min, settings.maxForwardGap));
@@ -115,13 +119,8 @@ function pickWeakSpot(
     return null;
   }
 
-  const now = Date.now();
   const weighted = anchors.map((stat) => {
-    const wrongRate = stat.wrongs / Math.max(1, stat.attempts);
-    const avgReaction = stat.totalReactionMs / Math.max(1, stat.attempts);
-    const recencyBoost = Math.max(0, 1 - (now - stat.lastSeenAt) / (1000 * 60 * 60));
-    const weight = 1 + wrongRate * 4 + Math.min(avgReaction / 2500, 2) + recencyBoost;
-    return { stat, weight };
+    return { stat, weight: weakSpotWeight(stat) };
   });
 
   const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
@@ -140,6 +139,31 @@ export function sampleUniform(t0: number, t1: number, random: Random = Math.rand
     return roundTime(t0);
   }
   return roundTime(t0 + random() * (t1 - t0));
+}
+
+export function nextSequentialCueStart(answerStart: number, t0: number, t1: number): number {
+  const courseStart = Math.max(0, t0);
+  const candidate = roundTime(answerStart);
+  if (!Number.isFinite(candidate) || candidate < courseStart || candidate > t1) {
+    return roundTime(courseStart);
+  }
+  return candidate;
+}
+
+export function isFirstTrialOutcome(committedTrialId: string | null, trialId: string): boolean {
+  return committedTrialId !== trialId;
+}
+
+export function addMissOnce(history: MissAttempt[], trial: Trial, now: number = Date.now()): MissAttempt[] {
+  if (history.some((miss) => miss.trial.id === trial.id)) {
+    return history;
+  }
+  return [{ id: `miss-${trial.id}-${now}`, trial, resolved: false }, ...history].slice(0, 8);
+}
+
+export function weakSpotWeight(stat: AnchorStats): number {
+  const wrongRate = stat.wrongs / Math.max(1, stat.attempts);
+  return 1 + wrongRate * 4;
 }
 
 function createContinuationGallery({

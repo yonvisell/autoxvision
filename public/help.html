@@ -154,8 +154,8 @@
             <h2>Recall modes</h2>
             <dl>
               <dt>Random recall mode</dt><dd>Samples an independent prompt location for each trial.</dd>
-              <dt>Sequential recall mode</dt><dd>Starts a newly loaded course at the beginning and advances through it in source-time order. Use <strong>Sequential position</strong> to jump to another location.</dd>
-              <dt>Weak spots mode</dt><dd>Begins with random sampling, then favors prompt locations associated with missed or slower answers.</dd>
+              <dt>Sequential recall mode</dt><dd>Starts a newly loaded course at the beginning. Each correct continuation becomes the next prompt; the sequence wraps to Start near the course end. Use <strong>Sequential position</strong> to jump.</dd>
+              <dt>Weak spots mode</dt><dd>Begins with random sampling, then favors locations with a higher first-answer miss rate.</dd>
               <dt>Mental lap mode</dt><dd>Hides the gallery. Visualize the continuation, then use <strong>Show answer</strong>. Choose sequential order or independent random starts in the controls.</dd>
             </dl>
           </section>
@@ -202,9 +202,10 @@
               <li><strong>Speed</strong> applies to prompt, gallery, and reveal playback.</li>
               <li><strong>Replay</strong> permits prompt replay while answering.</li>
               <li><strong>Sound</strong> enables correct and incorrect feedback tones.</li>
+              <li><strong>Prompt masking</strong> can blur and/or darken a selected height upward from the bottom of ordinary prompt playback. Masks also apply to Replay prompt, but never to gallery clips or answer replays.</li>
               <li><strong>Sequential position</strong> moves practice within the active Start-to-End range and is disabled in other modes.</li>
               <li>Controls that do not apply to the selected session mode remain visible but are disabled and greyed out.</li>
-              <li>The preset menu at the bottom applies grouped settings. Any direct edit changes it to Custom; <strong>Save preset</strong> stores one reusable local preset without changing the current course range.</li>
+              <li>The preset menu at the bottom applies grouped settings. Built-in presets preserve prompt masks. Any direct edit changes the preset to Custom; <strong>Save preset</strong> stores one reusable local preset, including masks, without changing the course range.</li>
               <li>Drag the horizontal divider to resize prompt and gallery. Notes and controls can be collapsed horizontally.</li>
             </ul>
           </section>
