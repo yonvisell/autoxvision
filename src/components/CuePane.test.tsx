@@ -53,15 +53,20 @@ describe('CuePane prompt masking', () => {
     const half = renderCue('cuePlaying');
     expect(half).toContain('prompt-mask-blur');
     expect(half).toContain('prompt-mask-fade');
-    expect(half.match(/height:50%/g)).toHaveLength(2);
-    expect(half).toContain('backdrop-filter:blur(24px)');
+    expect(half).toContain('<canvas');
+    expect(half).toContain('clip-path:inset(50% 0 0 0)');
+    expect(half).toContain('filter:blur(24px)');
+    expect(half).toContain('height:50%');
     expect(half).toContain('background-color:rgba(0, 0, 0, 0.7)');
 
     const full = renderCue('cuePlaying', {
+      promptBlurStrength: 60,
       promptBlurHeight: 100,
       promptFadeHeight: 100
     });
-    expect(full.match(/height:100%/g)).toHaveLength(2);
+    expect(full).toContain('clip-path:inset(0% 0 0 0)');
+    expect(full).toContain('filter:blur(60px)');
+    expect(full).toContain('height:100%');
   });
 
   it('omits zero-strength or zero-height masks without changing their settings', () => {

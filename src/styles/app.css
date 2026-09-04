@@ -218,7 +218,12 @@ textarea:disabled {
 }
 
 .prompt-mask-blur {
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
   z-index: 1;
+  will-change: filter, clip-path;
 }
 
 .prompt-mask-fade {
@@ -511,10 +516,52 @@ textarea:disabled {
   align-items: center;
 }
 
-.file-control input {
-  max-width: 100%;
-  color: #9aa7b8;
-  font-size: 0.68rem;
+.file-picker {
+  min-width: 0;
+  min-height: 22px;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #2b3544;
+  border-radius: 5px;
+  background: #111821;
+  color: #d7e0e9;
+  cursor: pointer;
+}
+
+.file-picker:hover,
+.file-picker:focus-within {
+  border-color: rgba(255, 150, 56, 0.72);
+}
+
+.file-picker input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.control-panel .file-picker-action {
+  padding: 2px 6px;
+  border-right: 1px solid #2b3544;
+  background: #18212c;
+  color: #f2f5f8;
+  font-size: 0.64rem;
+}
+
+.control-panel .file-picker-name {
+  min-width: 0;
+  padding: 2px 5px;
+  overflow: hidden;
+  color: #9eabba;
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .control-panel > .file-control {
@@ -559,33 +606,12 @@ textarea:disabled {
   border-bottom: 1px solid rgba(55, 68, 84, 0.5);
 }
 
-.prompt-mask-controls summary {
+.prompt-mask-heading {
   display: flex;
   align-items: center;
-  gap: 5px;
   min-height: 18px;
   color: #aeb9c7;
-  cursor: pointer;
   font-size: 0.64rem;
-  list-style: none;
-}
-
-.prompt-mask-controls summary::-webkit-details-marker {
-  display: none;
-}
-
-.prompt-mask-controls summary::after {
-  content: "›";
-  margin-left: auto;
-  color: #718094;
-  font-size: 0.82rem;
-  line-height: 1;
-  transform: rotate(0deg);
-  transition: transform 120ms ease;
-}
-
-.prompt-mask-controls[open] summary::after {
-  transform: rotate(90deg);
 }
 
 .prompt-mask-grid {

@@ -47,7 +47,7 @@ The video remains local in the browser. It is not uploaded.
 - Gallery playback: sequence clips one at a time by default, play clips on hover, or loop all clips.
 - Sequential position slider: jump within the active Start-to-End course range.
 - Replay setting: allow prompt replay while answering; sequential mode also offers a full-answer replay after a correct reveal.
-- Prompt masking disclosure: optionally blur and/or fade a configurable lower portion during prompt playback only; gallery and answer replays remain clear.
+- Prompt masking controls: optionally blur and/or fade a configurable lower portion during prompt playback only; gallery and answer replays remain clear.
 - Start and End controls: restrict the course region used for prompts.
 - Preset dropdown at the bottom: apply built-in settings or a saved local preset without changing the active course range.
 - Sound mute and reset score.

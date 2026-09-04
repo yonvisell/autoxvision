@@ -824,6 +824,7 @@ function App() {
         />
         <ControlPanel
           settings={settings}
+          videoName={video.file?.name ?? null}
           duration={video.duration}
           maxForwardGapLimit={forwardGapLimit}
           sequentialPosition={sequentialPosition}

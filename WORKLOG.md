@@ -498,6 +498,22 @@ Browser checks on `127.0.0.1:5175` with an ignored local 30-second H.264 video:
 - Verified the revised instructions page visually and observed no browser warnings or errors.
 - Component coverage verifies mask suppression at zero strength/height, rendering at 50% and 100% height, and suppression throughout answering and reveal phases.
 
+## 2026-09-04 file-state and blur follow-up
+
+- Replaced the native file-input presentation with a compact application-owned picker that reports the loaded filename. The underlying input still clears after selection, so selecting the same course again performs a real reset without displaying the misleading native `No file chosen` state.
+- Moved Blur and Fade directly into the main controls and removed the Prompt masking disclosure interaction.
+- Replaced compositor-dependent `backdrop-filter` blur with a frame-synchronized canvas copy of the active prompt and standard CSS `filter: blur(...)`. The canvas is rendered only while prompt masking is active, uses bounded display resolution, and is removed for answering, gallery playback, and all answer reveals.
+- Retained the 60px maximum. Visual testing on the actual course footage showed a strong blur at 24px, so the existing maximum provides substantial headroom.
+- Kept mask height as a stable frame-relative boundary. It can be aligned manually with a stable horizon; automatic scene-dependent horizon estimation was not added because foreground objects, trees, and camera motion would make it unreliable.
+
+Validation:
+
+- `npm run lint`: passed.
+- `npm test -- --run`: passed, 7 files / 37 tests.
+- `npm run build`: passed.
+- Browser checks verified empty and loaded filename states, same-file reset, always-visible masking controls, isolated blur, combined blur/fade ordering, prompt replay masking, clear gallery and answer reveal, and blur operation in all four modes.
+- Visual checks used both a 30-second H.264 test video and ignored local `AAXLPM1.MOV`; neither app state produced browser warnings or errors.
+
 ## Remaining limitations
 
 List only real limitations that remain at handoff.

@@ -11,6 +11,11 @@ type PromptMaskSettings = Pick<
   | 'promptFadeHeight'
 >;
 
+type FrameCallbackVideo = HTMLVideoElement & {
+  requestVideoFrameCallback?: (callback: () => void) => number;
+  cancelVideoFrameCallback?: (handle: number) => void;
+};
+
 type CuePaneProps = {
   videoUrl: string | null;
   clip: Clip | null;
@@ -53,6 +58,7 @@ export function CuePane({
   onStartNext
 }: CuePaneProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const blurCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const endedRef = useRef(onClipEnded);
   const [playError, setPlayError] = useState('');
   const showVideo = Boolean(videoUrl && clip && (phase === 'cuePlaying' || phase === 'revealing'));
@@ -125,6 +131,71 @@ export function CuePane({
     };
   }, [clip, playbackRate, showVideo, videoUrl]);
 
+  useEffect(() => {
+    const video = videoRef.current as FrameCallbackVideo | null;
+    const canvas = blurCanvasRef.current;
+    if (!video || !canvas || !clip || !showPromptBlur) {
+      return undefined;
+    }
+
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) {
+      return undefined;
+    }
+
+    let stopped = false;
+    let animationFrame = 0;
+    let videoFrame: number | null = null;
+
+    const schedule = () => {
+      if (stopped) {
+        return;
+      }
+      if (video.requestVideoFrameCallback) {
+        videoFrame = video.requestVideoFrameCallback(drawFrame);
+      } else {
+        animationFrame = window.requestAnimationFrame(drawFrame);
+      }
+    };
+
+    const drawFrame = () => {
+      if (stopped) {
+        return;
+      }
+
+      const bounds = canvas.getBoundingClientRect();
+      const resolutionScale = Math.min(1, Math.max(0.5, window.devicePixelRatio / 2));
+      const width = Math.max(1, Math.round(bounds.width * resolutionScale));
+      const height = Math.max(1, Math.round(bounds.height * resolutionScale));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      context.fillStyle = '#000';
+      context.fillRect(0, 0, width, height);
+      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+        const scale = Math.min(width / video.videoWidth, height / video.videoHeight);
+        const drawWidth = video.videoWidth * scale;
+        const drawHeight = video.videoHeight * scale;
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(video, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+      }
+
+      schedule();
+    };
+
+    drawFrame();
+    return () => {
+      stopped = true;
+      window.cancelAnimationFrame(animationFrame);
+      if (videoFrame !== null && video.cancelVideoFrameCallback) {
+        video.cancelVideoFrameCallback(videoFrame);
+      }
+    };
+  }, [clip, showPromptBlur, videoUrl]);
+
   const handleClick = () => {
     if (!videoUrl) {
       onRequestFile();
@@ -157,13 +228,13 @@ export function CuePane({
           <video ref={videoRef} src={videoUrl} playsInline muted={phase === 'cuePlaying'} preload="metadata" />
         ) : null}
         {showPromptBlur ? (
-          <span
+          <canvas
+            ref={blurCanvasRef}
             className="prompt-mask prompt-mask-blur"
             aria-hidden="true"
             style={{
-              height: `${promptMask.promptBlurHeight}%`,
-              backdropFilter: `blur(${promptMask.promptBlurStrength}px)`,
-              WebkitBackdropFilter: `blur(${promptMask.promptBlurStrength}px)`
+              clipPath: `inset(${100 - promptMask.promptBlurHeight}% 0 0 0)`,
+              filter: `blur(${promptMask.promptBlurStrength}px)`
             }}
           />
         ) : null}

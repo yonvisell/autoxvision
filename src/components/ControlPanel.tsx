@@ -4,6 +4,7 @@ import type { GalleryPlayback, MentalLapOrder, Mode, Preset, Settings } from '..
 
 type ControlPanelProps = {
   settings: Settings;
+  videoName: string | null;
   duration: number | null;
   maxForwardGapLimit: number;
   sequentialPosition: number;
@@ -21,6 +22,7 @@ type ControlPanelProps = {
 
 export function ControlPanel({
   settings,
+  videoName,
   duration,
   maxForwardGapLimit,
   sequentialPosition,
@@ -77,17 +79,22 @@ export function ControlPanel({
         Collapse
       </button>
 
-      <label className="file-control inline-control">
+      <div className="file-control inline-control">
         <span>Video</span>
-        <input
-          type="file"
-          accept="video/*,.mov,.mp4,.m4v,.webm"
-          onChange={(event) => {
-            onFileChange(event.currentTarget.files?.[0] ?? null);
-            event.currentTarget.value = '';
-          }}
-        />
-      </label>
+        <label className="file-picker" title={videoName ?? 'Choose a local course video'}>
+          <input
+            type="file"
+            accept="video/*,.mov,.mp4,.m4v,.webm"
+            aria-label="Choose course video"
+            onChange={(event) => {
+              onFileChange(event.currentTarget.files?.[0] ?? null);
+              event.currentTarget.value = '';
+            }}
+          />
+          <span className="file-picker-action">Choose</span>
+          <span className="file-picker-name">{videoName ?? 'No video loaded'}</span>
+        </label>
+      </div>
 
       <select
         className="mode-select"
@@ -160,8 +167,8 @@ export function ControlPanel({
         </label>
       </div>
 
-      <details className="prompt-mask-controls">
-        <summary title="Mask the lower portion of prompt playback only">Prompt masking</summary>
+      <section className="prompt-mask-controls" aria-label="Prompt masking">
+        <div className="prompt-mask-heading">Prompt masking</div>
         <div className="prompt-mask-grid">
           <section className="prompt-mask-effect" aria-label="Prompt blur controls">
             <label className="prompt-mask-toggle" title="Blur upward from the bottom of the prompt video">
@@ -186,7 +193,10 @@ export function ControlPanel({
                 onChange={(event) => applyCustom({ promptBlurStrength: Number(event.currentTarget.value) })}
               />
             </label>
-            <label className={!settings.promptBlurEnabled ? 'inactive-control' : ''}>
+            <label
+              className={!settings.promptBlurEnabled ? 'inactive-control' : ''}
+              title="Set a fixed lower-frame boundary; on level footage it can align with the horizon"
+            >
               <span>Blurred height <strong>{settings.promptBlurHeight.toFixed(0)}%</strong></span>
               <input
                 aria-label="Prompt blurred height"
@@ -224,7 +234,10 @@ export function ControlPanel({
                 onChange={(event) => applyCustom({ promptFadeLevel: Number(event.currentTarget.value) })}
               />
             </label>
-            <label className={!settings.promptFadeEnabled ? 'inactive-control' : ''}>
+            <label
+              className={!settings.promptFadeEnabled ? 'inactive-control' : ''}
+              title="Set a fixed lower-frame boundary; on level footage it can align with the horizon"
+            >
               <span>Faded height <strong>{settings.promptFadeHeight.toFixed(0)}%</strong></span>
               <input
                 aria-label="Prompt faded height"
@@ -239,7 +252,7 @@ export function ControlPanel({
             </label>
           </section>
         </div>
-      </details>
+      </section>
 
       <div className="playback-controls">
         <div className={`segmented${galleryControlsInactive ? ' inactive-control' : ''}`} aria-label="Gallery playback">
