@@ -62,6 +62,7 @@ export function CuePane({
   const endedRef = useRef(onClipEnded);
   const [playError, setPlayError] = useState('');
   const showVideo = Boolean(videoUrl && clip && (phase === 'cuePlaying' || phase === 'revealing'));
+  const mountVideo = Boolean(videoUrl && clip && (phase === 'cueDelay' || phase === 'cuePlaying' || phase === 'revealing'));
   const isReveal = phase === 'revealing';
   const showPromptBlur =
     phase === 'cuePlaying' &&
@@ -81,6 +82,20 @@ export function CuePane({
 
   useEffect(() => {
     const video = videoRef.current;
+    if (!video || !videoUrl || !clip || phase !== 'cueDelay') {
+      return;
+    }
+    setPlayError('');
+    video.pause();
+    video.defaultPlaybackRate = playbackRate;
+    video.playbackRate = playbackRate;
+    if (Math.abs(video.currentTime - clip.start) > 0.015) {
+      video.currentTime = clip.start;
+    }
+  }, [clip, phase, playbackRate, videoUrl]);
+
+  useEffect(() => {
+    const video = videoRef.current;
     if (!video || !videoUrl || !clip || !showVideo) {
       return undefined;
     }
@@ -89,6 +104,7 @@ export function CuePane({
     let stopped = false;
     setPlayError('');
     video.pause();
+    video.defaultPlaybackRate = playbackRate;
     video.playbackRate = playbackRate;
     video.currentTime = clip.start;
 
@@ -224,8 +240,15 @@ export function CuePane({
         onClick={handleClick}
         title={videoUrl ? 'Click to replay the prompt when replay is enabled' : 'Choose a local video'}
       >
-        {videoUrl ? (
-          <video ref={videoRef} src={videoUrl} playsInline muted={phase === 'cuePlaying'} preload="metadata" />
+        {mountVideo && videoUrl ? (
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            playsInline
+            muted={phase === 'cuePlaying'}
+            disablePictureInPicture
+            preload="auto"
+          />
         ) : null}
         {showPromptBlur ? (
           <canvas

@@ -44,7 +44,7 @@ The video remains local in the browser. It is not uploaded.
 - Choice wait slider: blackout before the gallery becomes active and separation between one-by-one choices.
 - Loop pause number control: delay before Hover or All play gallery clips restart, default `0.5s`.
 - Mode dropdown: Random recall mode, Sequential recall mode, Weak spots mode, and Mental lap mode.
-- Gallery playback: sequence clips one at a time by default, play clips on hover, or loop all clips.
+- Gallery playback: sequence clips one at a time by default, play clips on hover, or preload and loop all clips on a shared clock at the selected speed.
 - Sequential position slider: jump within the active Start-to-End course range.
 - Replay setting: allow prompt replay while answering; sequential mode also offers a full-answer replay after a correct reveal.
 - Prompt masking controls: optionally blur and/or fade a configurable lower portion during prompt playback only; gallery and answer replays remain clear.

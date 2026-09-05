@@ -76,7 +76,7 @@ function App() {
   const [lowerHeight, setLowerHeight] = useState(300);
   const [choicesReady, setChoicesReady] = useState(false);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
-  const [notesCollapsed, setNotesCollapsed] = useState(false);
+  const [notesCollapsed, setNotesCollapsed] = useState(true);
   const [galleryCollapsed, setGalleryCollapsed] = useState(false);
   const [status, setStatus] = useState<{ message: string; tone: 'neutral' | 'good' | 'bad' | 'warn' }>({
     message: 'Choose a local course-walk video to begin.',
@@ -730,7 +730,9 @@ function App() {
       style={{ '--lower-height': `${lowerHeight}px` } as React.CSSProperties}
     >
       <div className="metadata-loader" aria-hidden="true">
-        {video.url ? <video src={video.url} onLoadedMetadata={handleVideoMetadata} onError={handleVideoError} preload="metadata" /> : null}
+        {video.url && video.duration === null ? (
+          <video src={video.url} onLoadedMetadata={handleVideoMetadata} onError={handleVideoError} preload="metadata" />
+        ) : null}
       </div>
       <input
         ref={fileInputRef}

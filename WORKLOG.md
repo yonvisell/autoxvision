@@ -514,6 +514,27 @@ Validation:
 - Browser checks verified empty and loaded filename states, same-file reset, always-visible masking controls, isolated blur, combined blur/fade ordering, prompt replay masking, clear gallery and answer reveal, and blur operation in all four modes.
 - Visual checks used both a 30-second H.264 test video and ignored local `AAXLPM1.MOV`; neither app state produced browser warnings or errors.
 
+## 2026-09-04 synchronized high-resolution gallery playback
+
+- Profiled `/Users/yon/Pictures/GX010005.MP4`: 661.73 seconds, 3840x2160 HEVC, approximately 45 Mb/s, and 3.5 GB. At 4x speed, three independent decoders must advance roughly 120 source frames per second each for a 30 fps source, so All play is intrinsically the most demanding gallery mode.
+- Replaced independent All play seek/start/loop behavior with a gallery-wide readiness barrier and shared loop clock. Every choice is pre-seeked to its assigned time, all ready players receive the same selected/default playback rate, and all `play()` calls are issued together. Loop end, blackout pause, re-seek, and restart are coordinated as one cycle.
+- Added a two-second preparation fallback so an unusually slow decoder cannot leave the gallery permanently black. Ready tiles remain masked until their assigned frame is available.
+- Removed two avoidable media pipelines during gallery playback: the metadata player now unmounts after duration is known, and the prompt player unmounts while choices are active. The prompt is pre-seeked during its short cue delay and remounts for prompt or answer playback.
+- Notes now start collapsed. The collapsed Notes control overlays the unused top of the prompt-action rail instead of consuming a separate vertical strip. The prompt-action rail and its buttons are narrower and slightly smaller.
+- Updated help text to state that All play is synchronized and that One-by-one or Hover consumes less parallel decoding capacity for unusually demanding files.
+
+Validation:
+
+- `npm run lint`: passed.
+- `npm test -- --run`: passed, 8 files / 40 tests.
+- `npm run build`: passed.
+- `git diff --check`: passed.
+- Before the change, the supplied video showed a 0.23-second source-time start spread and more than 1.25 seconds of source-time separation after independent loop restarts. After the change, repeated 4x samples, including a complete loop boundary, stayed within 0.025 source seconds across all three tiles (less than 7 ms displayed-time spread).
+- During active gallery playback, the page contained exactly three video elements instead of five; all three reported `playbackRate = defaultPlaybackRate = 4`.
+- An 18-sample, 100 ms visual cadence check of a gallery tile produced 18 distinct rendered frames. One-by-one playback retained exactly one active tile at 4x, and Replay prompt stopped every gallery player and ran the prompt at 4x.
+- Verified correct-answer hotkey selection, green reveal feedback, responsive collapsed layout, no horizontal overflow at the mobile breakpoint, and no browser warnings or errors.
+- A browser cannot request a lower coded resolution from a single-resolution local MP4 track. CSS scaling already fits the display but does not lower HEVC decode cost; adding a browser-side transcode of a multi-gigabyte source would add long preprocessing and substantial memory/storage use, contrary to the direct-play workflow.
+
 ## Remaining limitations
 
 List only real limitations that remain at handoff.
@@ -522,6 +543,7 @@ List only real limitations that remain at handoff.
 - Weak-spots mode is intentionally lightweight: it falls back to random until at least three anchor stats exist, then biases anchors by first-answer miss rate.
 - This project requires Node >=20. The local default Node on this machine is v11.14.0, so use a modern Node on `PATH` for npm commands.
 - Notes export/import pure functions are still tested, but visible import/export controls were removed from the main UI per user preference.
+- All play still requires one decoder per visible choice. For hardware that cannot sustain several 4K streams at the selected speed, One-by-one, Hover, or a separately encoded lower-resolution source remains the reliable fallback.
 
 ## Final handoff summary
 

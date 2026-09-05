@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { GalleryItem, GalleryPlayback } from '../types';
 import { GalleryTile } from './GalleryTile';
@@ -45,6 +46,128 @@ export function Gallery({
   onSelect
 }: GalleryProps) {
   const choiceColumns = items.length > 4 ? Math.ceil(items.length / 2) : Math.max(1, items.length);
+  const itemSignature = useMemo(
+    () => items.map((item) => `${item.id}:${item.clip.start}:${item.clip.end}`).join('|'),
+    [items]
+  );
+  const videoElementsRef = useRef<Map<string, HTMLVideoElement>>(new Map());
+  const readyIdsRef = useRef<Set<string>>(new Set());
+  const allLoopStartLockedRef = useRef(false);
+  const [allLoopCycle, setAllLoopCycle] = useState(0);
+  const [allLoopReadyCount, setAllLoopReadyCount] = useState(0);
+  const [allLoopPhase, setAllLoopPhase] = useState<'preparing' | 'playing' | 'waiting'>('preparing');
+
+  const registerVideoElement = useCallback((id: string, element: HTMLVideoElement | null) => {
+    if (element) {
+      videoElementsRef.current.set(id, element);
+    } else {
+      videoElementsRef.current.delete(id);
+    }
+  }, []);
+
+  const handleAllLoopReady = useCallback(
+    (id: string, cycle: number) => {
+      if (cycle !== allLoopCycle || readyIdsRef.current.has(id)) {
+        return;
+      }
+      readyIdsRef.current.add(id);
+      setAllLoopReadyCount(readyIdsRef.current.size);
+    },
+    [allLoopCycle]
+  );
+
+  const startAllLoop = useCallback(() => {
+    if (allLoopStartLockedRef.current) {
+      return;
+    }
+    const elements = items.map((item) => videoElementsRef.current.get(item.id)).filter(Boolean) as HTMLVideoElement[];
+    if (elements.length !== items.length) {
+      return;
+    }
+    allLoopStartLockedRef.current = true;
+    elements.forEach((element) => {
+      element.defaultPlaybackRate = playbackRate;
+      element.playbackRate = playbackRate;
+    });
+    setAllLoopPhase('playing');
+    elements.forEach((element) => {
+      void element.play().catch(() => undefined);
+    });
+  }, [items, playbackRate]);
+
+  useEffect(() => {
+    videoElementsRef.current.forEach((element) => element.pause());
+    readyIdsRef.current.clear();
+    allLoopStartLockedRef.current = false;
+    setAllLoopReadyCount(0);
+    setAllLoopPhase('preparing');
+    setAllLoopCycle((cycle) => cycle + 1);
+  }, [itemSignature, playback, playbackRate, videoUrl]);
+
+  useEffect(() => {
+    if (
+      playback !== 'allLoop' ||
+      disabled ||
+      allLoopPhase !== 'preparing' ||
+      items.length === 0 ||
+      allLoopReadyCount !== items.length
+    ) {
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(startAllLoop);
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [allLoopPhase, allLoopReadyCount, disabled, items.length, playback, startAllLoop]);
+
+  useEffect(() => {
+    if (playback !== 'allLoop' || disabled || allLoopPhase !== 'preparing' || items.length === 0) {
+      return undefined;
+    }
+    const timer = window.setTimeout(startAllLoop, 2000);
+    return () => window.clearTimeout(timer);
+  }, [allLoopPhase, disabled, items.length, playback, startAllLoop]);
+
+  useEffect(() => {
+    if (playback !== 'allLoop' || allLoopPhase !== 'playing' || items.length === 0) {
+      return undefined;
+    }
+    const shortestSourceDuration = Math.min(...items.map((item) => item.clip.end - item.clip.start));
+    const wallDurationMs = (shortestSourceDuration / Math.max(0.25, playbackRate)) * 1000;
+    const timer = window.setTimeout(() => {
+      videoElementsRef.current.forEach((element) => element.pause());
+      setAllLoopPhase('waiting');
+    }, Math.max(1, wallDurationMs));
+
+    return () => window.clearTimeout(timer);
+  }, [allLoopPhase, items, playback, playbackRate]);
+
+  useEffect(() => {
+    if (playback !== 'allLoop' || allLoopPhase !== 'waiting') {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      readyIdsRef.current.clear();
+      allLoopStartLockedRef.current = false;
+      setAllLoopReadyCount(0);
+      setAllLoopPhase('preparing');
+      setAllLoopCycle((cycle) => cycle + 1);
+    }, Math.max(0, loopDelay) * 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [allLoopPhase, loopDelay, playback]);
+
+  useEffect(() => {
+    if (!disabled || playback !== 'allLoop' || allLoopPhase === 'preparing') {
+      return;
+    }
+    videoElementsRef.current.forEach((element) => element.pause());
+    readyIdsRef.current.clear();
+    allLoopStartLockedRef.current = false;
+    setAllLoopReadyCount(0);
+    setAllLoopPhase('preparing');
+    setAllLoopCycle((cycle) => cycle + 1);
+  }, [allLoopPhase, disabled, playback]);
 
   if (hidden && collapsed) {
     return (
@@ -94,7 +217,11 @@ export function Gallery({
   }
 
   return (
-    <section className="choices" aria-label="Answer choices">
+    <section
+      className="choices"
+      aria-label="Answer choices"
+      aria-busy={playback === 'allLoop' && !disabled && allLoopPhase === 'preparing'}
+    >
       <div className="choices-topline">
         {instruction ? <div className="gallery-instruction">{instruction}</div> : <span />}
         {misses.length > 0 ? (
@@ -124,11 +251,15 @@ export function Gallery({
             videoUrl={videoUrl}
             playback={playback}
             isSequenceActive={playback !== 'sequence' || activeSequenceIndex === index}
+            allLoopCycle={allLoopCycle}
+            allLoopPlaying={playback === 'allLoop' && allLoopPhase === 'playing'}
             playbackRate={playbackRate}
             loopDelay={loopDelay}
             disabled={disabled}
             isWrong={wrongIds.has(item.id)}
             isCorrectReveal={revealCorrect && item.isCorrect}
+            onAllLoopReady={handleAllLoopReady}
+            onVideoElement={registerVideoElement}
             onSelect={onSelect}
           />
         ))}

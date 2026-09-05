@@ -90,4 +90,10 @@ describe('CuePane prompt masking', () => {
     expect(markup).not.toContain('prompt-mask-blur');
     expect(markup).not.toContain('prompt-mask-fade');
   });
+
+  it('releases the prompt video while the gallery is playing', () => {
+    expect(renderCue('answering')).not.toContain('<video');
+    expect(renderCue('cuePlaying')).toContain('<video');
+    expect(renderCue('revealing')).toContain('<video');
+  });
 });

@@ -178,9 +178,10 @@
             <dl>
               <dt>One-by-one</dt><dd>Plays each choice separately with black frames between choices.</dd>
               <dt>Hover</dt><dd>Plays a choice while its tile is hovered or keyboard-focused.</dd>
-              <dt>All play</dt><dd>Loops all choices simultaneously.</dd>
+              <dt>All play</dt><dd>Prepares every choice, then starts and loops them together at the selected Speed.</dd>
             </dl>
             <p><strong>Loop pause</strong> holds the end of each Hover or All play clip before it restarts. Clicking anywhere on a video submits that answer; an incorrect choice remains available for another attempt.</p>
+            <p>All play requires the browser to decode every visible choice in parallel. For unusually demanding source files, One-by-one and Hover use less decoding capacity.</p>
           </section>
         </div>
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GalleryItem, GalleryPlayback } from '../types';
 
 type GalleryTileProps = {
@@ -7,11 +7,15 @@ type GalleryTileProps = {
   videoUrl: string;
   playback: GalleryPlayback;
   isSequenceActive: boolean;
+  allLoopCycle: number;
+  allLoopPlaying: boolean;
   playbackRate: number;
   loopDelay: number;
   disabled: boolean;
   isWrong: boolean;
   isCorrectReveal: boolean;
+  onAllLoopReady: (id: string, cycle: number) => void;
+  onVideoElement: (id: string, element: HTMLVideoElement | null) => void;
   onSelect: (id: string) => void;
 };
 
@@ -21,20 +25,85 @@ export function GalleryTile({
   videoUrl,
   playback,
   isSequenceActive,
+  allLoopCycle,
+  allLoopPlaying,
   playbackRate,
   loopDelay,
   disabled,
   isWrong,
   isCorrectReveal,
+  onAllLoopReady,
+  onVideoElement,
   onSelect
 }: GalleryTileProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hovered, setHovered] = useState(false);
   const [clipReady, setClipReady] = useState(false);
+  const assignVideoRef = useCallback(
+    (element: HTMLVideoElement | null) => {
+      videoRef.current = element;
+      onVideoElement(item.id, element);
+    },
+    [item.id, onVideoElement]
+  );
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) {
+    if (!video || playback !== 'allLoop') {
+      return undefined;
+    }
+
+    let active = true;
+    let announced = false;
+    video.pause();
+    video.defaultPlaybackRate = playbackRate;
+    video.playbackRate = playbackRate;
+    setClipReady(false);
+
+    const markReady = () => {
+      if (
+        !active ||
+        announced ||
+        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        Math.abs(video.currentTime - item.clip.start) > 0.05
+      ) {
+        return;
+      }
+      announced = true;
+      setClipReady(true);
+      onAllLoopReady(item.id, allLoopCycle);
+    };
+
+    const seekToAssignedTime = () => {
+      if (!active || video.readyState < HTMLMediaElement.HAVE_METADATA) {
+        return;
+      }
+      if (Math.abs(video.currentTime - item.clip.start) <= 0.015) {
+        markReady();
+      } else {
+        video.currentTime = item.clip.start;
+      }
+    };
+
+    video.addEventListener('loadedmetadata', seekToAssignedTime);
+    video.addEventListener('loadeddata', markReady);
+    video.addEventListener('canplay', markReady);
+    video.addEventListener('seeked', markReady);
+    seekToAssignedTime();
+
+    return () => {
+      active = false;
+      video.pause();
+      video.removeEventListener('loadedmetadata', seekToAssignedTime);
+      video.removeEventListener('loadeddata', markReady);
+      video.removeEventListener('canplay', markReady);
+      video.removeEventListener('seeked', markReady);
+    };
+  }, [allLoopCycle, item.clip.start, item.id, onAllLoopReady, playback, playbackRate]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || playback === 'allLoop') {
       return undefined;
     }
 
@@ -42,7 +111,8 @@ export function GalleryTile({
     let active = true;
     let started = false;
     let loopTimer: number | null = null;
-    const shouldPlay = playback === 'allLoop' || (playback === 'hover' && hovered) || (playback === 'sequence' && isSequenceActive);
+    const shouldPlay = (playback === 'hover' && hovered) || (playback === 'sequence' && isSequenceActive);
+    video.defaultPlaybackRate = playbackRate;
     video.playbackRate = playbackRate;
     video.pause();
     setClipReady(false);
@@ -62,7 +132,7 @@ export function GalleryTile({
         return;
       }
       if (video.currentTime >= item.clip.end - 0.015) {
-        if (playback === 'allLoop' || (playback === 'hover' && shouldPlay)) {
+        if (playback === 'hover' && shouldPlay) {
           video.pause();
           if (loopDelay > 0) {
             loopTimer = window.setTimeout(restartLoop, loopDelay * 1000);
@@ -131,6 +201,8 @@ export function GalleryTile({
       data-gallery-index={index}
       data-correct={item.isCorrect ? 'true' : 'false'}
       data-clip-start={item.clip.start.toFixed(3)}
+      data-playback-rate={playbackRate.toFixed(2)}
+      data-loop-state={playback === 'allLoop' ? (allLoopPlaying ? 'playing' : 'waiting') : playback}
       title={`Choose video ${index + 1} as the nearest upcoming continuation`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -138,8 +210,17 @@ export function GalleryTile({
       onBlur={() => setHovered(false)}
       aria-label={`Choose continuation video ${index + 1}`}
     >
-      <video ref={videoRef} src={videoUrl} muted playsInline preload="metadata" />
-      {!clipReady || (playback === 'sequence' && !isSequenceActive) ? <span className="tile-blackout" /> : null}
+      <video
+        ref={assignVideoRef}
+        src={videoUrl}
+        muted
+        playsInline
+        disablePictureInPicture
+        preload={playback === 'allLoop' ? 'auto' : 'metadata'}
+      />
+      {disabled || !clipReady || (playback === 'sequence' && !isSequenceActive) || (playback === 'allLoop' && !allLoopPlaying) ? (
+        <span className="tile-blackout" />
+      ) : null}
       <span className="tile-number">{index + 1}</span>
     </button>
   );

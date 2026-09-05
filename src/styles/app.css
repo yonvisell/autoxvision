@@ -169,13 +169,14 @@ textarea:disabled {
 }
 
 .notes-collapsed .main-stage {
-  grid-template-columns: minmax(0, 1fr) 34px;
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .cue-pane {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 82px;
+  grid-template-columns: minmax(0, 1fr) 74px;
   grid-template-rows: minmax(0, 1fr);
   gap: 4px;
 }
@@ -264,17 +265,17 @@ textarea:disabled {
 .cue-actions {
   display: grid;
   grid-auto-rows: min-content;
-  gap: 4px;
+  gap: 3px;
   align-content: end;
   align-items: stretch;
   min-width: 0;
 }
 
 .cue-action {
-  padding: 4px 6px;
-  min-height: 24px;
-  border-radius: 6px;
-  font-size: 0.68rem;
+  padding: 3px 4px;
+  min-height: 22px;
+  border-radius: 5px;
+  font-size: 0.63rem;
   font-weight: 650;
   line-height: 1.1;
 }
@@ -325,12 +326,23 @@ textarea:disabled {
 }
 
 .notes-box-collapsed {
-  min-width: 0;
-  display: grid;
-  place-items: stretch;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 6;
+  width: 74px;
+  height: 22px;
+  display: block;
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+.notes-box-collapsed .collapse-tab {
+  width: 100%;
+  height: 22px;
+  padding: 2px 5px;
+  writing-mode: horizontal-tb;
 }
 
 .notes-box textarea {
