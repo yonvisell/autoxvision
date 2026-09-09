@@ -48,7 +48,7 @@ The video remains local in the browser. It is not uploaded.
 - Sequential position slider: jump within the valid prompt-start portion of the active course range.
 - Replay setting: allow prompt replay while answering; sequential mode also offers a full-answer replay after a correct reveal.
 - Prompt masking controls: optionally blur and/or fade a configurable lower portion during prompt playback only; gallery and answer replays remain clear.
-- Course range dual slider: sets source-video Start and End bounds. Each prompt and its correct continuation fit inside those bounds.
+- Course range dual slider: sets source-video Start and End bounds. Every prompt, correct continuation, and distractor clip fits inside those bounds.
 - Answer gap dual slider: sets the minimum and maximum source-video time skipped between prompt end and the correct continuation. Near the course End, only the locally available part of that interval is sampled.
 - Speed slider: native playback from `0.25x` through `14x`. Above `4x`, lagging high-resolution video is advanced against a wall clock so displayed duration remains correct even when every intermediate frame cannot be decoded.
 - Preset dropdown at the bottom: apply built-in settings or a saved local preset without changing the active course range.

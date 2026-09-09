@@ -279,7 +279,7 @@ describe('trialEngine', () => {
     expect(trial.answer.start - trial.cue.end).toBeCloseTo(40);
   });
 
-  it('keeps prompt and answer clips inside varied selected course ranges', () => {
+  it('keeps every generated clip inside varied selected course ranges', () => {
     let state = 0x6d2b79f5;
     const random = () => {
       state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
@@ -304,6 +304,36 @@ describe('trialEngine', () => {
       expect(trial.answer.end).toBeLessThanOrEqual(t1 + 0.001);
       expect(answerGap).toBeGreaterThanOrEqual(Math.max(1 / 30, minForwardGap) - 0.001);
       expect(answerGap).toBeLessThanOrEqual(Math.max(1 / 30, maxForwardGap) + 0.001);
+      for (const item of trial.gallery) {
+        expect(item.clip.start).toBeGreaterThanOrEqual(t0 - 0.001);
+        expect(item.clip.end).toBeLessThanOrEqual(t1 + 0.001);
+      }
+    }
+  });
+
+  it('keeps every gallery choice inside the selected course range', () => {
+    let index = 0;
+    const values = [0.5, 0, 0.2, 0.9, 0.7, 0.35, 0.8, 0.1];
+    const trial = createTrial({
+      duration: 200,
+      forcedCueStart: 90,
+      settings: {
+        ...defaultSettings,
+        mode: 'random',
+        T: 5,
+        N: 5,
+        t0: 40,
+        t1: 160,
+        minForwardGap: 5,
+        maxForwardGap: 20
+      },
+      random: () => values[index++ % values.length]
+    });
+
+    expect(trial.gallery).toHaveLength(5);
+    for (const item of trial.gallery) {
+      expect(item.clip.start).toBeGreaterThanOrEqual(40);
+      expect(item.clip.end).toBeLessThanOrEqual(160);
     }
   });
 

@@ -62,7 +62,7 @@ export function createTrial({
           }
         ]
       : createContinuationGallery({
-          duration,
+          courseStart: t0,
           courseEnd,
           T: settings.T,
           count: settings.N,
@@ -182,7 +182,7 @@ export function weakSpotWeight(stat: AnchorStats): number {
 }
 
 function createContinuationGallery({
-  duration,
+  courseStart,
   courseEnd,
   T,
   count,
@@ -192,7 +192,7 @@ function createContinuationGallery({
   maxGap,
   random
 }: {
-  duration: number;
+  courseStart: number;
   courseEnd: number;
   T: number;
   count: number;
@@ -210,7 +210,8 @@ function createContinuationGallery({
   const starts = [
     { start: correctStart, isCorrect: true },
     ...sampleRemoteDistractorStarts({
-      duration,
+      sourceStart: courseStart,
+      sourceEnd: Math.max(courseStart, courseEnd - T),
       T,
       count: count - 1,
       cueStart,
@@ -229,14 +230,16 @@ function createContinuationGallery({
 }
 
 function sampleRemoteDistractorStarts({
-  duration,
+  sourceStart,
+  sourceEnd,
   T,
   count,
   cueStart,
   correctStart,
   random
 }: {
-  duration: number;
+  sourceStart: number;
+  sourceEnd: number;
   T: number;
   count: number;
   cueStart: number;
@@ -247,8 +250,6 @@ function sampleRemoteDistractorStarts({
     return [];
   }
 
-  const sourceStart = 0;
-  const sourceEnd = Math.max(sourceStart, duration - T);
   const correctEnd = correctStart + T;
   const buffers = uniqueDescending([Math.max(REMOTE_DISTRACTOR_GAP_SECONDS, T * 4), REMOTE_DISTRACTOR_GAP_SECONDS, T * 2, T]);
   const separations = uniqueDescending([REMOTE_DISTRACTOR_GAP_SECONDS, T * 4, T * 2, T, EPS]);

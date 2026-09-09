@@ -557,6 +557,20 @@ Validation:
 - The full controls fit a 299x325px allocation without horizontal or vertical scrolling. Prompt, choice, sequential restart, reveal, and keyboard flows were exercised without browser errors or warnings.
 - No physical iPadOS validation was performed. All play at 14x with three simultaneous 4K HEVC choices remains hardware-dependent; One-by-one is the efficient default path for demanding media.
 
+## 2026-09-09 Course range gallery-boundary correction
+
+- Published and verified the preceding timing/control revision at commit `09b6b9b` before beginning this correction.
+- Reproduced a boundary defect in which a `40-160s` Course range produced a distractor starting at `15.938s`. Prompt and correct-answer sampling already honored the selected range, but remote-distractor sampling still used the complete source-video bounds.
+- Passed Course range start and the latest complete in-range clip start into the distractor sampler. Existing exclusion buffers around the prompt and correct answer are unchanged.
+- Added a deterministic regression case and extended the randomized timing invariant to require every generated gallery clip to begin at or after Course range start and end at or before Course range end.
+
+Validation:
+
+- `npm run lint`: passed.
+- `npm test -- --run`: passed, 10 files / 56 tests.
+- `npm run build`: passed.
+- Chrome validation used an already loaded local video and an active `4.5-57.3s` range. Random Recall, Sequential Recall, and Weak Spots each generated only complete in-range gallery clips; browser warnings/errors remained empty.
+
 ## Remaining limitations
 
 List only real limitations that remain at handoff.
