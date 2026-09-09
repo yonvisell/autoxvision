@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { applyNativePlaybackRate, syncMediaToWallClock } from '../lib/mediaPlayback';
 import type { GalleryItem, GalleryPlayback } from '../types';
 
 type GalleryTileProps = {
@@ -56,8 +57,7 @@ export function GalleryTile({
     let active = true;
     let announced = false;
     video.pause();
-    video.defaultPlaybackRate = playbackRate;
-    video.playbackRate = playbackRate;
+    applyNativePlaybackRate(video, playbackRate);
     setClipReady(false);
 
     const markReady = () => {
@@ -111,9 +111,9 @@ export function GalleryTile({
     let active = true;
     let started = false;
     let loopTimer: number | null = null;
+    let wallStartMs = 0;
     const shouldPlay = (playback === 'hover' && hovered) || (playback === 'sequence' && isSequenceActive);
-    video.defaultPlaybackRate = playbackRate;
-    video.playbackRate = playbackRate;
+    applyNativePlaybackRate(video, playbackRate);
     video.pause();
     setClipReady(false);
 
@@ -123,6 +123,7 @@ export function GalleryTile({
         return;
       }
       video.currentTime = item.clip.start;
+      wallStartMs = performance.now();
       void video.play().catch(() => undefined);
       frame = window.requestAnimationFrame(tick);
     };
@@ -131,7 +132,7 @@ export function GalleryTile({
       if (!active) {
         return;
       }
-      if (video.currentTime >= item.clip.end - 0.015) {
+      if (syncMediaToWallClock(video, item.clip.start, item.clip.end, playbackRate, wallStartMs)) {
         if (playback === 'hover' && shouldPlay) {
           video.pause();
           if (loopDelay > 0) {
@@ -155,6 +156,7 @@ export function GalleryTile({
       started = true;
       setClipReady(true);
       if (shouldPlay && !disabled) {
+        wallStartMs = performance.now();
         void video.play().catch(() => undefined);
         frame = window.requestAnimationFrame(tick);
       }
@@ -210,14 +212,16 @@ export function GalleryTile({
       onBlur={() => setHovered(false)}
       aria-label={`Choose continuation video ${index + 1}`}
     >
-      <video
-        ref={assignVideoRef}
-        src={videoUrl}
-        muted
-        playsInline
-        disablePictureInPicture
-        preload={playback === 'allLoop' ? 'auto' : 'metadata'}
-      />
+      {playback !== 'sequence' || isSequenceActive ? (
+        <video
+          ref={assignVideoRef}
+          src={videoUrl}
+          muted
+          playsInline
+          disablePictureInPicture
+          preload={playback === 'allLoop' ? 'auto' : 'metadata'}
+        />
+      ) : null}
       {disabled || !clipReady || (playback === 'sequence' && !isSequenceActive) || (playback === 'allLoop' && !allLoopPlaying) ? (
         <span className="tile-blackout" />
       ) : null}

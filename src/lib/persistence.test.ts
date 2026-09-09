@@ -25,4 +25,9 @@ describe('settings persistence', () => {
       promptFadeHeight: 37
     });
   });
+
+  it('retains native playback rates through the 14x control limit', () => {
+    saveSettings({ ...defaultSettings, playbackRate: 14 });
+    expect(loadSettings(defaultSettings).playbackRate).toBe(14);
+  });
 });

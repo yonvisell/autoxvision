@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { applyNativePlaybackRate, syncMediaToWallClock } from '../lib/mediaPlayback';
 import type { GalleryItem, GalleryPlayback } from '../types';
 import { GalleryTile } from './GalleryTile';
 
@@ -85,10 +86,7 @@ export function Gallery({
       return;
     }
     allLoopStartLockedRef.current = true;
-    elements.forEach((element) => {
-      element.defaultPlaybackRate = playbackRate;
-      element.playbackRate = playbackRate;
-    });
+    elements.forEach((element) => applyNativePlaybackRate(element, playbackRate));
     setAllLoopPhase('playing');
     elements.forEach((element) => {
       void element.play().catch(() => undefined);
@@ -132,14 +130,30 @@ export function Gallery({
     if (playback !== 'allLoop' || allLoopPhase !== 'playing' || items.length === 0) {
       return undefined;
     }
+    const wallStartMs = performance.now();
+    let frame = 0;
     const shortestSourceDuration = Math.min(...items.map((item) => item.clip.end - item.clip.start));
     const wallDurationMs = (shortestSourceDuration / Math.max(0.25, playbackRate)) * 1000;
+    const synchronizePlayers = () => {
+      const now = performance.now();
+      items.forEach((item) => {
+        const element = videoElementsRef.current.get(item.id);
+        if (element) {
+          syncMediaToWallClock(element, item.clip.start, item.clip.end, playbackRate, wallStartMs, now);
+        }
+      });
+      frame = window.requestAnimationFrame(synchronizePlayers);
+    };
+    frame = window.requestAnimationFrame(synchronizePlayers);
     const timer = window.setTimeout(() => {
       videoElementsRef.current.forEach((element) => element.pause());
       setAllLoopPhase('waiting');
     }, Math.max(1, wallDurationMs));
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, [allLoopPhase, items, playback, playbackRate]);
 
   useEffect(() => {

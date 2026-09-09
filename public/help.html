@@ -154,7 +154,7 @@
             <h2>Recall modes</h2>
             <dl>
               <dt>Random recall mode</dt><dd>Samples an independent prompt location for each trial.</dd>
-              <dt>Sequential recall mode</dt><dd>Starts a newly loaded course at the beginning. Each correct continuation becomes the next prompt; the sequence wraps to Start near the course end. Use <strong>Sequential position</strong> to jump.</dd>
+              <dt>Sequential recall mode</dt><dd>Starts a newly loaded course at the beginning. Each correct continuation becomes the next prompt; the sequence wraps to Course range start near the end. Use <strong>Sequential position</strong> to jump.</dd>
               <dt>Weak spots mode</dt><dd>Begins with random sampling, then favors locations with a higher first-answer miss rate.</dd>
               <dt>Mental lap mode</dt><dd>Hides the gallery. Visualize the continuation, then use <strong>Show answer</strong>. Choose sequential order or independent random starts in the controls.</dd>
             </dl>
@@ -165,18 +165,18 @@
             <ul>
               <li><strong>Prompt length</strong> is displayed viewing time. A 5-second prompt lasts 5 seconds at every speed; increasing speed covers more source-video time.</li>
               <li>Continuation choices have the same displayed duration as the prompt.</li>
-              <li><strong>Response gap</strong> sets the allowed source-time interval between prompt end and the correct gallery continuation in recall modes.</li>
+              <li><strong>Answer gap</strong> sets the minimum and maximum source-video time skipped between prompt end and the correct gallery continuation. Near Course range End, the maximum used for that trial is limited only by the remaining local space.</li>
               <li><strong>Choice wait</strong> sets the blackout time before gallery choices become active.</li>
               <li>Wrong choices are sampled outside the protected prompt-to-answer interval.</li>
               <li>In mental lap, the continuation is immediate and has the same duration as the prompt. Show answer plays the continuous prompt-plus-continuation sequence.</li>
-              <li><strong>Start</strong> and <strong>End</strong> restrict the course region used for prompt starts.</li>
+              <li><strong>Course range</strong> is a dual slider for source-video Start and End. Prompts and correct continuations stay inside this region.</li>
             </ul>
           </section>
 
           <section>
             <h2>Gallery playback</h2>
             <dl>
-              <dt>One-by-one</dt><dd>Plays each choice separately with black frames between choices.</dd>
+              <dt>One-by-one</dt><dd>Plays each choice separately with black frames between choices and keeps only the active choice decoder mounted.</dd>
               <dt>Hover</dt><dd>Plays a choice while its tile is hovered or keyboard-focused.</dd>
               <dt>All play</dt><dd>Prepares every choice, then starts and loops them together at the selected Speed.</dd>
             </dl>
@@ -192,7 +192,7 @@
               <dt>Replay prompt</dt><dd>Replays the current prompt when Replay is enabled.</dd>
               <dt>Show answer</dt><dd>Reveals the correct continuation. It is available without a gallery choice in mental lap.</dd>
               <dt>Replay full answer</dt><dd>After a sequential answer has played, replays the complete prompt-through-correct-continuation sequence.</dd>
-              <dt>Course start</dt><dd>Restarts sequential recall or mental-lap practice at the active Start time.</dd>
+              <dt>Course start</dt><dd>Restarts sequential recall or mental-lap practice at the active Course range start.</dd>
               <dt>Next prompt</dt><dd>Begins the next trial after an answer replay. Clicking the black prompt pane does the same thing.</dd>
             </dl>
           </section>
@@ -200,11 +200,11 @@
           <section>
             <h2>Controls and presets</h2>
             <ul>
-              <li><strong>Speed</strong> applies to prompt, gallery, and reveal playback.</li>
+              <li><strong>Speed</strong> applies from 0.25x through 14x to prompt, gallery, and reveal playback. Above 4x, the app skips forward when a decoder falls behind so clip duration and covered course time remain correct; very high rates therefore present sampled frames.</li>
               <li><strong>Replay</strong> permits prompt replay while answering.</li>
               <li><strong>Sound</strong> enables correct and incorrect feedback tones.</li>
               <li><strong>Prompt masking</strong> can blur and/or darken a selected height upward from the bottom of ordinary prompt playback. The height is a fixed frame boundary that can be aligned manually with a stable horizon. Masks also apply to Replay prompt, but never to gallery clips or answer replays.</li>
-              <li><strong>Sequential position</strong> moves practice within the active Start-to-End range and is disabled in other modes.</li>
+              <li><strong>Sequential position</strong> moves practice through the part of Course range where a complete prompt, minimum Answer gap, and continuation fit. It is disabled in other modes.</li>
               <li>Controls that do not apply to the selected session mode remain visible but are disabled and greyed out.</li>
               <li>The preset menu at the bottom applies grouped settings. Built-in presets preserve prompt masks. Any direct edit changes the preset to Custom; <strong>Save preset</strong> stores one reusable local preset, including masks, without changing the course range.</li>
               <li>Drag the horizontal divider to resize prompt and gallery. Notes and controls can be collapsed horizontally.</li>

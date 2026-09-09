@@ -535,6 +535,28 @@ Validation:
 - Verified correct-answer hotkey selection, green reveal feedback, responsive collapsed layout, no horizontal overflow at the mobile breakpoint, and no browser warnings or errors.
 - A browser cannot request a lower coded resolution from a single-resolution local MP4 track. CSS scaling already fits the display but does not lower HEVC decode cost; adding a browser-side transcode of a multi-gigabyte source would add long preprocessing and substantial memory/storage use, contrary to the direct-play workflow.
 
+## 2026-09-08 course timing, controls, and high-rate playback
+
+- Corrected the timing model so Course range defines source-video bounds, while Answer gap means only the source-time interval from prompt end to the correct continuation start. A large maximum gap no longer shortens the usable course globally; it is clipped only when a sampled prompt is near Course End.
+- Added strict recall-mode ordering at a nominal zero-second minimum gap and preserved the selected gap values while trials are regenerated. Sequential progression wraps to Course range start when its next saved position no longer fits.
+- Replaced separate Start and End number boxes with a compact, accessible Course range dual slider. Answer gap uses the same dual-slider treatment and a fixed 0-60-second scale. Reorganized the panel into Course timing, Choice playback, and Prompt mask groups with consistent tracks, values, spacing, and inactive-control styling.
+- Increased native playback speed to 14x. Above 4x, a wall-clock governor advances lagging media to the expected source timestamp, compensating when the browser accepts a high `playbackRate` but its decoder advances at only about 4x. Native pitch preservation is disabled to reduce unnecessary audio processing.
+- One-by-one gallery playback now mounts only the active choice video. All play retains its shared readiness/start barrier and gains the same high-rate wall-clock correction.
+- Fresh Sequential Recall and sequential Mental Lap sessions begin at Course range start. Control-driven trial rebuilding is briefly debounced so dragging a range handle does not repeatedly tear down active media.
+- Updated README and help text for Course range, Answer gap, 14x behavior, and the high-resolution playback tradeoffs. The GitHub Pages site was intentionally not updated.
+
+Validation:
+
+- `npm install --no-audit --no-fund`: passed; dependencies already current.
+- `npm run lint`: passed.
+- `npm test -- --run`: passed, 10 files / 55 tests. Coverage includes real control input events, dual-handle ordering, late-course gap clipping, randomized timing invariants, sequential wrapping, one-decoder gallery behavior, and high-rate correction.
+- `npm run build`: passed.
+- `git diff --check`: passed.
+- Browser-tested at 1280x720 with `/Users/yon/Pictures/GX010005.MP4` (3840x2160 HEVC). A sampled prompt ending at 249.488s produced a correct continuation at 295.470s, a 45.982s gap within the configured 1-50s interval; distractors remained outside the protected prompt-answer region.
+- At 14x, a one-by-one choice advanced approximately 31.4 source seconds in 2.2 wall seconds with one video decoder mounted. A prompt advanced approximately 56.2 source seconds in 4.0 wall seconds and completed on the configured wall-clock duration.
+- The full controls fit a 299x325px allocation without horizontal or vertical scrolling. Prompt, choice, sequential restart, reveal, and keyboard flows were exercised without browser errors or warnings.
+- No physical iPadOS validation was performed. All play at 14x with three simultaneous 4K HEVC choices remains hardware-dependent; One-by-one is the efficient default path for demanding media.
+
 ## Remaining limitations
 
 List only real limitations that remain at handoff.

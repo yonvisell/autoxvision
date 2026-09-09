@@ -1,4 +1,13 @@
-import { EPS, anchorTime, clampT1, clip, isVideoLongEnough, maxForwardGapLimit, roundTime } from './clipMath';
+import {
+  EPS,
+  MAX_RESPONSE_GAP_SECONDS,
+  anchorTime,
+  clip,
+  maxCueStartInRange,
+  requiredResponseGap,
+  resolveCourseEnd,
+  roundTime
+} from './clipMath';
 import type { AnchorStats, GalleryItem, MissAttempt, Mode, Settings, Trial } from '../types';
 
 type Random = () => number;
@@ -28,13 +37,19 @@ export function createTrial({
   forcedCueStart = null,
   random = Math.random
 }: TrialContext): Trial {
-  const t0 = Math.max(0, settings.t0);
-  const forwardGap = settings.mode === 'mentalLap' ? { min: 0, max: 0 } : normalizeForwardGapRange(settings, duration);
-  const cueClampGap = isVideoLongEnough(duration, settings.T, forwardGap.max) ? forwardGap.max : forwardGap.min;
-  const t1 = clampT1(duration, settings.T, t0, settings.t1, cueClampGap);
+  const t0 = Math.min(duration, Math.max(0, settings.t0));
+  const courseEnd = resolveCourseEnd(duration, t0, settings.t1);
+  const forwardGap = settings.mode === 'mentalLap' ? { min: 0, max: 0 } : normalizeForwardGapRange(settings);
+  const t1 = maxCueStartInRange(t0, courseEnd, settings.T, forwardGap.min);
+  const wrapsSequentially =
+    settings.mode === 'sequential' || (settings.mode === 'mentalLap' && settings.mentalLapOrder === 'sequential');
   const cueStart =
     forcedCueStart !== null && Number.isFinite(forcedCueStart)
-      ? roundTime(Math.min(t1, Math.max(t0, forcedCueStart)))
+      ? roundTime(
+          wrapsSequentially && (forcedCueStart < t0 || forcedCueStart > t1)
+            ? t0
+            : Math.min(t1, Math.max(t0, forcedCueStart))
+        )
       : pickCueStart(settings.mode, settings.mentalLapOrder, t0, t1, settings.T, stats, previousCueStart, random);
   const cue = clip(cueStart, settings.T);
   const gallery =
@@ -48,6 +63,7 @@ export function createTrial({
         ]
       : createContinuationGallery({
           duration,
+          courseEnd,
           T: settings.T,
           count: settings.N,
           cueStart,
@@ -85,6 +101,7 @@ function pickCueStart(
         return roundTime(next);
       }
     }
+    return roundTime(t0);
   }
 
   if (mode === 'weakSpots') {
@@ -97,14 +114,12 @@ function pickCueStart(
   return sampleUniform(t0, t1, random);
 }
 
-function normalizeForwardGapRange(settings: TrialSettings, duration: number): { min: number; max: number } {
-  const limit = maxForwardGapLimit(duration, settings.T);
-  const min = Math.min(limit, Math.max(0, settings.minForwardGap));
-  const visibleMax = Math.min(limit, Math.max(min, settings.maxForwardGap));
-  const effectiveMin = Math.max(EPS, min);
+function normalizeForwardGapRange(settings: TrialSettings): { min: number; max: number } {
+  const min = requiredResponseGap(settings.minForwardGap);
+  const max = Math.min(MAX_RESPONSE_GAP_SECONDS, Math.max(min, settings.maxForwardGap));
   return {
-    min: effectiveMin,
-    max: Math.max(effectiveMin, visibleMax)
+    min,
+    max
   };
 }
 
@@ -168,6 +183,7 @@ export function weakSpotWeight(stat: AnchorStats): number {
 
 function createContinuationGallery({
   duration,
+  courseEnd,
   T,
   count,
   cueStart,
@@ -177,6 +193,7 @@ function createContinuationGallery({
   random
 }: {
   duration: number;
+  courseEnd: number;
   T: number;
   count: number;
   cueStart: number;
@@ -186,7 +203,8 @@ function createContinuationGallery({
   random: Random;
 }): GalleryItem[] {
   const lowerStart = cueEnd + minGap;
-  const upperStart = Math.max(lowerStart, Math.min(cueEnd + maxGap, duration - T));
+  const latestAnswerStart = Math.max(lowerStart, courseEnd - T);
+  const upperStart = Math.max(lowerStart, Math.min(cueEnd + maxGap, latestAnswerStart));
   const correctStart = sampleUniform(lowerStart, upperStart, random);
 
   const starts = [

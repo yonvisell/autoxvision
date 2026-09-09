@@ -1,5 +1,5 @@
 import type { AnchorStats, Annotation, Mode, Settings } from '../types';
-import { MAX_RESPONSE_GAP_SECONDS } from './clipMath';
+import { MAX_PLAYBACK_RATE, MAX_RESPONSE_GAP_SECONDS, MIN_PLAYBACK_RATE } from './clipMath';
 import { MAX_PROMPT_BLUR_PX } from './presets';
 
 const prefix = 'autoxvision:v1';
@@ -37,7 +37,7 @@ export function loadSettings(defaults: Settings): Settings {
   merged.minForwardGap = Math.min(MAX_RESPONSE_GAP_SECONDS, Math.max(0, merged.minForwardGap));
   merged.maxForwardGap = Math.min(MAX_RESPONSE_GAP_SECONDS, Math.max(merged.minForwardGap, merged.maxForwardGap));
   merged.galleryLoopDelay = Math.min(10, Math.max(0, merged.galleryLoopDelay));
-  merged.playbackRate = Math.min(10, Math.max(0.25, merged.playbackRate));
+  merged.playbackRate = Math.min(MAX_PLAYBACK_RATE, Math.max(MIN_PLAYBACK_RATE, merged.playbackRate));
   merged.promptBlurEnabled = merged.promptBlurEnabled === true;
   merged.promptBlurStrength = clampNumber(merged.promptBlurStrength, defaults.promptBlurStrength, 0, MAX_PROMPT_BLUR_PX);
   merged.promptBlurHeight = clampNumber(merged.promptBlurHeight, defaults.promptBlurHeight, 0, 100);

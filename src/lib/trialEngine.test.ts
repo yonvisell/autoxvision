@@ -195,6 +195,17 @@ describe('trialEngine', () => {
     expect(trial.cueStart).toBe(3);
   });
 
+  it('wraps a stale sequential position after timing controls shorten the valid range', () => {
+    const trial = createTrial({
+      duration: 80,
+      forcedCueStart: 70,
+      settings: { ...defaultSettings, mode: 'sequential', t0: 5, t1: 60, T: 10, minForwardGap: 5 },
+      random: () => 0.5
+    });
+
+    expect(trial.cueStart).toBe(5);
+  });
+
   it('makes the mental-lap continuation immediate and equal in length to the prompt', () => {
     const trial = createTrial({
       duration: 30,
@@ -220,7 +231,80 @@ describe('trialEngine', () => {
     });
 
     expect(sequential.cueStart).toBe(12);
-    expect(random.cueStart).toBe(8.992);
+    expect(random.cueStart).toBe(9);
+  });
+
+  it('starts a fresh sequential mental lap at the active course start', () => {
+    const trial = createTrial({
+      duration: 40,
+      settings: { ...defaultSettings, mode: 'mentalLap', mentalLapOrder: 'sequential', t0: 6, T: 2 },
+      random: () => 0.8
+    });
+
+    expect(trial.cueStart).toBe(6);
+  });
+
+  it('uses End as a hard boundary while preserving late prompt positions', () => {
+    let call = 0;
+    const trial = createTrial({
+      duration: 140,
+      settings: {
+        ...defaultSettings,
+        mode: 'random',
+        T: 10,
+        N: 3,
+        t0: 20,
+        t1: 100,
+        minForwardGap: 5,
+        maxForwardGap: 60
+      },
+      random: () => (call++ === 0 ? 1 : 0.5)
+    });
+
+    expect(trial.cueStart).toBe(75);
+    expect(trial.answer.start - trial.cue.end).toBeCloseTo(5);
+    expect(trial.answer.end).toBeLessThanOrEqual(100);
+  });
+
+  it('samples the full configured answer-gap range when local room exists', () => {
+    let index = 0;
+    const values = [0.75, 0.2, 0.8, 0.4, 0.6];
+    const trial = createTrial({
+      duration: 200,
+      forcedCueStart: 20,
+      settings: { ...defaultSettings, T: 5, N: 3, t1: 180, minForwardGap: 10, maxForwardGap: 50 },
+      random: () => values[index++ % values.length]
+    });
+
+    expect(trial.answer.start - trial.cue.end).toBeCloseTo(40);
+  });
+
+  it('keeps prompt and answer clips inside varied selected course ranges', () => {
+    let state = 0x6d2b79f5;
+    const random = () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state / 0x1_0000_0000;
+    };
+
+    for (let index = 0; index < 1000; index += 1) {
+      const T = 0.5 + (index % 20) * 0.25;
+      const t0 = (index % 25) * 0.5;
+      const minForwardGap = index % 12;
+      const maxForwardGap = minForwardGap + (index % (61 - minForwardGap));
+      const t1 = t0 + 2 * T + minForwardGap + 1 + (index % 80);
+      const duration = t1 + 20;
+      const trial = createTrial({
+        duration,
+        settings: { ...defaultSettings, T, N: 5, t0, t1, minForwardGap, maxForwardGap },
+        random
+      });
+      const answerGap = trial.answer.start - trial.cue.end;
+
+      expect(trial.cue.start).toBeGreaterThanOrEqual(t0 - 0.001);
+      expect(trial.answer.end).toBeLessThanOrEqual(t1 + 0.001);
+      expect(answerGap).toBeGreaterThanOrEqual(Math.max(1 / 30, minForwardGap) - 0.001);
+      expect(answerGap).toBeLessThanOrEqual(Math.max(1 / 30, maxForwardGap) + 0.001);
+    }
   });
 
   it('updates weak-spot anchor stats', () => {

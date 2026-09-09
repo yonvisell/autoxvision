@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { applyNativePlaybackRate, syncMediaToWallClock } from '../lib/mediaPlayback';
 import type { Clip, Settings } from '../types';
 
 type PromptMaskSettings = Pick<
@@ -87,8 +88,7 @@ export function CuePane({
     }
     setPlayError('');
     video.pause();
-    video.defaultPlaybackRate = playbackRate;
-    video.playbackRate = playbackRate;
+    applyNativePlaybackRate(video, playbackRate);
     if (Math.abs(video.currentTime - clip.start) > 0.015) {
       video.currentTime = clip.start;
     }
@@ -102,17 +102,18 @@ export function CuePane({
 
     let frame = 0;
     let stopped = false;
+    let playStarted = false;
+    let wallStartMs = 0;
     setPlayError('');
     video.pause();
-    video.defaultPlaybackRate = playbackRate;
-    video.playbackRate = playbackRate;
+    applyNativePlaybackRate(video, playbackRate);
     video.currentTime = clip.start;
 
     const stopIfEnded = () => {
       if (stopped) {
         return;
       }
-      if (video.currentTime >= clip.end - 0.015) {
+      if (syncMediaToWallClock(video, clip.start, clip.end, playbackRate, wallStartMs)) {
         stopped = true;
         video.pause();
         video.currentTime = clip.end;
@@ -123,10 +124,16 @@ export function CuePane({
     };
 
     const play = async () => {
+      if (playStarted || stopped) {
+        return;
+      }
+      playStarted = true;
       try {
         await video.play();
+        wallStartMs = performance.now();
         frame = window.requestAnimationFrame(stopIfEnded);
       } catch {
+        playStarted = false;
         setPlayError('Playback is waiting for a click or key press.');
       }
     };
@@ -233,7 +240,14 @@ export function CuePane({
   };
 
   return (
-    <section className={`cue-pane ${isReveal ? 'cue-pane-reveal' : ''}`} aria-label="Prompt clip">
+    <section
+      className={`cue-pane ${isReveal ? 'cue-pane-reveal' : ''}`}
+      aria-label="Prompt clip"
+      data-phase={phase}
+      data-clip-start={clip?.start.toFixed(3) ?? ''}
+      data-clip-end={clip?.end.toFixed(3) ?? ''}
+      data-playback-rate={playbackRate.toFixed(2)}
+    >
       <button
         className="cue-stage"
         type="button"

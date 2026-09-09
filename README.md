@@ -44,11 +44,13 @@ The video remains local in the browser. It is not uploaded.
 - Choice wait slider: blackout before the gallery becomes active and separation between one-by-one choices.
 - Loop pause number control: delay before Hover or All play gallery clips restart, default `0.5s`.
 - Mode dropdown: Random recall mode, Sequential recall mode, Weak spots mode, and Mental lap mode.
-- Gallery playback: sequence clips one at a time by default, play clips on hover, or preload and loop all clips on a shared clock at the selected speed.
-- Sequential position slider: jump within the active Start-to-End course range.
+- Gallery playback: play clips one at a time by default, play on hover, or preload and loop all clips on a shared clock. One-by-one keeps only the active choice decoder mounted.
+- Sequential position slider: jump within the valid prompt-start portion of the active course range.
 - Replay setting: allow prompt replay while answering; sequential mode also offers a full-answer replay after a correct reveal.
 - Prompt masking controls: optionally blur and/or fade a configurable lower portion during prompt playback only; gallery and answer replays remain clear.
-- Start and End controls: restrict the course region used for prompts.
+- Course range dual slider: sets source-video Start and End bounds. Each prompt and its correct continuation fit inside those bounds.
+- Answer gap dual slider: sets the minimum and maximum source-video time skipped between prompt end and the correct continuation. Near the course End, only the locally available part of that interval is sampled.
+- Speed slider: native playback from `0.25x` through `14x`. Above `4x`, lagging high-resolution video is advanced against a wall clock so displayed duration remains correct even when every intermediate frame cannot be decoded.
 - Preset dropdown at the bottom: apply built-in settings or a saved local preset without changing the active course range.
 - Sound mute and reset score.
 

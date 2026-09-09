@@ -44,4 +44,30 @@ describe('Gallery all-play preparation', () => {
     const markup = renderAllPlay(true);
     expect(markup.match(/tile-blackout/g)).toHaveLength(3);
   });
+
+  it('mounts only the active decoder during one-by-one playback', () => {
+    const markup = renderToStaticMarkup(
+      <Gallery
+        videoUrl="blob:test-video"
+        items={items}
+        playback="sequence"
+        activeSequenceIndex={1}
+        playbackRate={14}
+        loopDelay={0.5}
+        instruction="Choose"
+        disabled={false}
+        hidden={false}
+        collapsed={false}
+        wrongIds={new Set()}
+        revealCorrect={false}
+        misses={[]}
+        onRetryMiss={() => undefined}
+        onToggleCollapsed={() => undefined}
+        onSelect={() => undefined}
+      />
+    );
+
+    expect(markup.match(/<video/g)).toHaveLength(1);
+    expect(markup).toContain('data-playback-rate="14.00"');
+  });
 });

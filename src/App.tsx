@@ -6,10 +6,11 @@ import { NotesBox } from './components/NotesBox';
 import { ScoreBadge } from './components/ScoreBadge';
 import { StatusLine } from './components/StatusLine';
 import {
-  clampT1,
-  isVideoLongEnough,
-  MAX_RESPONSE_GAP_SECONDS,
-  maxForwardGapLimit,
+  clamp,
+  isCourseRangeLongEnough,
+  maxCueStartInRange,
+  requiredResponseGap,
+  resolveCourseEnd,
   sourceDurationForPlayback
 } from './lib/clipMath';
 import { applyPreset, defaultSettings, markCustom } from './lib/presets';
@@ -73,7 +74,7 @@ function App() {
   const [wrongIds, setWrongIds] = useState<Set<string>>(new Set());
   const [missHistory, setMissHistory] = useState<MissAttempt[]>([]);
   const [activeMissId, setActiveMissId] = useState<string | null>(null);
-  const [lowerHeight, setLowerHeight] = useState(300);
+  const [lowerHeight, setLowerHeight] = useState(325);
   const [choicesReady, setChoicesReady] = useState(false);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
   const [notesCollapsed, setNotesCollapsed] = useState(true);
@@ -90,28 +91,27 @@ function App() {
   const committedOutcomeTrialIdRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const sourceClipDuration = sourceDurationForPlayback(settings.T, settings.playbackRate);
-  const forwardGapLimit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, sourceClipDuration));
-  const effectiveMinForwardGap = Math.min(settings.minForwardGap, forwardGapLimit);
-  const effectiveMaxForwardGap = Math.min(Math.max(settings.maxForwardGap, effectiveMinForwardGap), forwardGapLimit);
-  const requiredForwardGap = settings.mode === 'mentalLap' ? 0 : effectiveMinForwardGap;
+  const courseStart = video.duration === null ? Math.max(0, settings.t0) : clamp(settings.t0, 0, video.duration);
+  const courseEnd = video.duration === null ? courseStart : resolveCourseEnd(video.duration, courseStart, settings.t1);
+  const requiredForwardGap = settings.mode === 'mentalLap' ? 0 : requiredResponseGap(settings.minForwardGap);
   const effectiveTrialSettings = useMemo<TrialSettings>(
     () => ({
       T: sourceClipDuration,
       N: settings.N,
       mode: settings.mode,
       mentalLapOrder: settings.mentalLapOrder,
-      minForwardGap: effectiveMinForwardGap,
-      maxForwardGap: effectiveMaxForwardGap,
-      t0: settings.t0,
+      minForwardGap: settings.minForwardGap,
+      maxForwardGap: settings.maxForwardGap,
+      t0: courseStart,
       t1: settings.t1
     }),
     [
-      effectiveMaxForwardGap,
-      effectiveMinForwardGap,
+      courseStart,
       settings.N,
       settings.mentalLapOrder,
+      settings.maxForwardGap,
+      settings.minForwardGap,
       settings.mode,
-      settings.t0,
       settings.t1,
       sourceClipDuration
     ]
@@ -120,7 +120,7 @@ function App() {
   const canRunTrial = Boolean(
     video.url &&
       video.duration !== null &&
-      isVideoLongEnough(video.duration, sourceClipDuration, requiredForwardGap) &&
+      isCourseRangeLongEnough(courseStart, courseEnd, sourceClipDuration, requiredForwardGap) &&
       !video.error
   );
   const revealClip = useMemo(() => {
@@ -143,42 +143,18 @@ function App() {
   );
   const canRestartCourse = Boolean(video.url && canRunTrial && (settings.mode === 'sequential' || settings.mode === 'mentalLap'));
   const canReplayFullAnswer = Boolean(video.url && trial && settings.mode === 'sequential' && phase === 'nextReady');
-  const sequentialCueClampGap =
-    video.duration !== null && isVideoLongEnough(video.duration, sourceClipDuration, effectiveMaxForwardGap)
-      ? effectiveMaxForwardGap
-      : effectiveMinForwardGap;
   const sequentialCueStartMax =
     video.duration === null
-      ? Math.max(0, settings.t0)
-      : clampT1(video.duration, sourceClipDuration, Math.max(0, settings.t0), settings.t1, sequentialCueClampGap);
-  const sequentialRangeEnd =
-    video.duration === null
-      ? Math.max(0, settings.t0)
-      : Math.max(settings.t0, Math.min(settings.t1 ?? video.duration, video.duration));
-  const sequentialPosition = Math.min(
-    sequentialCueStartMax,
-    Math.max(settings.t0, trial?.cueStart ?? settings.t0)
-  );
+      ? courseStart
+      : maxCueStartInRange(courseStart, courseEnd, sourceClipDuration, requiredForwardGap);
+  const sequentialPosition =
+    settings.mode === 'sequential'
+      ? Math.min(sequentialCueStartMax, Math.max(courseStart, trial?.cueStart ?? courseStart))
+      : courseStart;
 
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
-
-  useEffect(() => {
-    if (video.duration === null) {
-      return;
-    }
-    const limit = Math.min(MAX_RESPONSE_GAP_SECONDS, maxForwardGapLimit(video.duration, sourceClipDuration));
-    const minForwardGap = Math.min(settings.minForwardGap, limit);
-    const maxForwardGap = Math.min(Math.max(settings.maxForwardGap, minForwardGap), limit);
-    if (minForwardGap !== settings.minForwardGap || maxForwardGap !== settings.maxForwardGap) {
-      setSettings((previous) => ({
-        ...previous,
-        minForwardGap,
-        maxForwardGap
-      }));
-    }
-  }, [settings.maxForwardGap, settings.minForwardGap, sourceClipDuration, video.duration]);
 
   useEffect(() => {
     if (!video.url) {
@@ -311,19 +287,26 @@ function App() {
     if (!video.url || video.duration === null || video.error) {
       return;
     }
-    if (!isVideoLongEnough(video.duration, sourceClipDuration, requiredForwardGap)) {
-      setTrial(null);
-      setPhase('idle');
-      setStatus({ message: 'Video is too short for the current prompt length and minimum forward gap.', tone: 'warn' });
-      return;
-    }
-    const forcedCueStart = settings.mode === 'sequential' ? (lastCueStart ?? effectiveTrialSettings.t0) : null;
-    beginTrial(null, forcedCueStart);
+    const regenerationTimer = window.setTimeout(() => {
+      if (!isCourseRangeLongEnough(courseStart, courseEnd, sourceClipDuration, requiredForwardGap)) {
+        setTrial(null);
+        setPhase('idle');
+        setStatus({ message: 'The selected course range is too short for the prompt, answer, and minimum answer gap.', tone: 'warn' });
+        return;
+      }
+      const forcedCueStart = settings.mode === 'sequential' ? (lastCueStart ?? effectiveTrialSettings.t0) : null;
+      beginTrial(null, forcedCueStart);
+    }, 120);
+
+    return () => window.clearTimeout(regenerationTimer);
   }, [
     beginTrial,
+    courseEnd,
+    courseStart,
     settings.T,
     settings.N,
     requiredForwardGap,
+    settings.maxForwardGap,
     settings.minForwardGap,
     settings.mode,
     settings.playbackRate,
@@ -383,7 +366,8 @@ function App() {
   const updateSettings = (patch: Partial<Settings>) => {
     if (
       (patch.mode !== undefined && patch.mode !== settings.mode) ||
-      (patch.t0 !== undefined && settings.mode === 'sequential')
+      ((patch.t0 !== undefined || patch.t1 !== undefined) &&
+        (settings.mode === 'sequential' || (settings.mode === 'mentalLap' && settings.mentalLapOrder === 'sequential')))
     ) {
       setLastCueStart(null);
     }
@@ -828,9 +812,8 @@ function App() {
           settings={settings}
           videoName={video.file?.name ?? null}
           duration={video.duration}
-          maxForwardGapLimit={forwardGapLimit}
           sequentialPosition={sequentialPosition}
-          sequentialPositionMax={sequentialRangeEnd}
+          sequentialPositionMax={sequentialCueStartMax}
           disabled={panelDisabled}
           collapsed={controlsCollapsed}
           onFileChange={handleFileChange}

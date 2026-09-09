@@ -9,9 +9,8 @@ function renderPanel(videoName: string | null) {
       settings={defaultSettings}
       videoName={videoName}
       duration={120}
-      maxForwardGapLimit={60}
       sequentialPosition={0}
-      sequentialPositionMax={120}
+      sequentialPositionMax={39}
       disabled={false}
       collapsed={false}
       onFileChange={() => undefined}
@@ -35,8 +34,19 @@ describe('ControlPanel', () => {
   it('keeps prompt masking directly in the main controls', () => {
     const markup = renderPanel(null);
     expect(markup).toContain('aria-label="Prompt masking"');
-    expect(markup).toContain('Blur lower frame');
-    expect(markup).toContain('Fade lower frame');
+    expect(markup).toContain('>Blur</label>');
+    expect(markup).toContain('>Fade</label>');
     expect(markup).not.toContain('<details');
+  });
+
+  it('uses dual ranges for course bounds and answer gap with a 14x speed limit', () => {
+    const markup = renderPanel('course-walk.mov');
+    expect(markup).toContain('aria-label="Course range start"');
+    expect(markup).toContain('aria-label="Course range end"');
+    expect(markup).toContain('aria-label="Minimum answer gap"');
+    expect(markup).toContain('aria-label="Maximum answer gap"');
+    expect(markup).toContain('aria-label="Playback speed" type="range" min="0.25" max="14"');
+    expect(markup).not.toContain('Start (s)');
+    expect(markup).not.toContain('End (s)');
   });
 });
