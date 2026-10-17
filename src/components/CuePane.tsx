@@ -62,6 +62,7 @@ export function CuePane({
   const blurCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const endedRef = useRef(onClipEnded);
   const [playError, setPlayError] = useState('');
+  const retryPlaybackRef = useRef<(() => void) | null>(null);
   const showVideo = Boolean(videoUrl && clip && (phase === 'cuePlaying' || phase === 'revealing'));
   const mountVideo = Boolean(videoUrl && clip && (phase === 'cueDelay' || phase === 'cuePlaying' || phase === 'revealing'));
   const isReveal = phase === 'revealing';
@@ -75,7 +76,9 @@ export function CuePane({
     promptMask.promptFadeEnabled &&
     promptMask.promptFadeLevel > 0 &&
     promptMask.promptFadeHeight > 0;
-  const blackoutText = phase === 'idle' ? 'Choose a video to begin' : phase === 'nextReady' ? 'Click for next prompt' : '';
+  const blackoutText = phase === 'idle'
+    ? videoUrl ? 'Adjust timing to start' : 'Choose a video to begin'
+    : phase === 'nextReady' ? 'Click for next prompt' : '';
 
   useEffect(() => {
     endedRef.current = onClipEnded;
@@ -89,9 +92,14 @@ export function CuePane({
     setPlayError('');
     video.pause();
     applyNativePlaybackRate(video, playbackRate);
-    if (Math.abs(video.currentTime - clip.start) > 0.015) {
-      video.currentTime = clip.start;
-    }
+    const prepare = () => {
+      if (video.readyState >= HTMLMediaElement.HAVE_METADATA && Math.abs(video.currentTime - clip.start) > 0.015) {
+        video.currentTime = clip.start;
+      }
+    };
+    video.addEventListener('loadedmetadata', prepare);
+    prepare();
+    return () => video.removeEventListener('loadedmetadata', prepare);
   }, [clip, phase, playbackRate, videoUrl]);
 
   useEffect(() => {
@@ -104,10 +112,10 @@ export function CuePane({
     let stopped = false;
     let playStarted = false;
     let wallStartMs = 0;
+    let startupTimer: number | null = null;
     setPlayError('');
     video.pause();
     applyNativePlaybackRate(video, playbackRate);
-    video.currentTime = clip.start;
 
     const stopIfEnded = () => {
       if (stopped) {
@@ -124,32 +132,66 @@ export function CuePane({
     };
 
     const play = async () => {
-      if (playStarted || stopped) {
+      if (playStarted || stopped || video.seeking || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
         return;
       }
       playStarted = true;
       try {
         await video.play();
+        if (stopped) {
+          return;
+        }
+        if (startupTimer !== null) window.clearTimeout(startupTimer);
+        setPlayError('');
         wallStartMs = performance.now();
         frame = window.requestAnimationFrame(stopIfEnded);
       } catch {
-        playStarted = false;
-        setPlayError('Playback is waiting for a click or key press.');
+        if (!stopped) {
+          playStarted = false;
+          setPlayError('Playback could not start. Tap Retry playback.');
+        }
       }
     };
 
-    const onSeeked = () => {
-      void play();
+    const prepare = () => {
+      if (stopped || video.readyState < HTMLMediaElement.HAVE_METADATA) return;
+      if (Math.abs(video.currentTime - clip.start) > 0.03) {
+        video.currentTime = clip.start;
+      } else {
+        void play();
+      }
     };
-
-    video.addEventListener('seeked', onSeeked, { once: true });
-    if (Math.abs(video.currentTime - clip.start) < 0.03) {
-      void play();
-    }
+    const onSeeked = () => {
+      if (Math.abs(video.currentTime - clip.start) < 0.05) void play();
+    };
+    const armStartupTimer = () => {
+      if (startupTimer !== null) window.clearTimeout(startupTimer);
+      startupTimer = window.setTimeout(() => {
+        if (!stopped) setPlayError('Video is still loading. Tap Retry playback.');
+      }, 10000);
+    };
+    retryPlaybackRef.current = () => {
+      playStarted = false;
+      setPlayError('');
+      armStartupTimer();
+      prepare();
+    };
+    video.addEventListener('loadedmetadata', prepare);
+    video.addEventListener('loadeddata', onSeeked);
+    video.addEventListener('canplay', onSeeked);
+    video.addEventListener('seeked', onSeeked);
+    armStartupTimer();
+    prepare();
 
     return () => {
       stopped = true;
+      video.pause();
+      retryPlaybackRef.current = null;
       window.cancelAnimationFrame(frame);
+      if (startupTimer !== null) window.clearTimeout(startupTimer);
+      video.removeEventListener('loadedmetadata', prepare);
+      video.removeEventListener('loadeddata', onSeeked);
+      video.removeEventListener('canplay', onSeeked);
       video.removeEventListener('seeked', onSeeked);
     };
   }, [clip, playbackRate, showVideo, videoUrl]);
@@ -220,6 +262,10 @@ export function CuePane({
   }, [clip, showPromptBlur, videoUrl]);
 
   const handleClick = () => {
+    if (playError && retryPlaybackRef.current) {
+      retryPlaybackRef.current();
+      return;
+    }
     if (!videoUrl) {
       onRequestFile();
       return;
@@ -336,7 +382,14 @@ export function CuePane({
         >
           Show answer (A)
         </button>
-        {playError ? <span className="inline-warn">{playError}</span> : null}
+        {playError ? (
+          <>
+            <button className="cue-action" type="button" onClick={() => retryPlaybackRef.current?.()}>
+              Retry playback
+            </button>
+            <span className="inline-warn" role="status">{playError}</span>
+          </>
+        ) : null}
       </div>
     </section>
   );

@@ -26,6 +26,7 @@ type GalleryProps = {
   onRetryMiss: (id: string) => void;
   onToggleCollapsed: () => void;
   onSelect: (id: string) => void;
+  onSequenceClipEnded: (id: string) => void;
 };
 
 export function Gallery({
@@ -44,7 +45,8 @@ export function Gallery({
   misses,
   onRetryMiss,
   onToggleCollapsed,
-  onSelect
+  onSelect,
+  onSequenceClipEnded
 }: GalleryProps) {
   const choiceColumns = items.length > 4 ? Math.ceil(items.length / 2) : Math.max(1, items.length);
   const itemSignature = useMemo(
@@ -172,7 +174,7 @@ export function Gallery({
   }, [allLoopPhase, loopDelay, playback]);
 
   useEffect(() => {
-    if (!disabled || playback !== 'allLoop' || allLoopPhase === 'preparing') {
+    if (!disabled || playback !== 'allLoop') {
       return;
     }
     videoElementsRef.current.forEach((element) => element.pause());
@@ -181,7 +183,7 @@ export function Gallery({
     setAllLoopReadyCount(0);
     setAllLoopPhase('preparing');
     setAllLoopCycle((cycle) => cycle + 1);
-  }, [allLoopPhase, disabled, playback]);
+  }, [disabled, playback]);
 
   if (hidden && collapsed) {
     return (
@@ -275,6 +277,7 @@ export function Gallery({
             onAllLoopReady={handleAllLoopReady}
             onVideoElement={registerVideoElement}
             onSelect={onSelect}
+            onSequenceClipEnded={onSequenceClipEnded}
           />
         ))}
       </div>

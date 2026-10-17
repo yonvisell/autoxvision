@@ -21,13 +21,13 @@ const promptMask: Pick<
 };
 
 function renderCue(
-  phase: 'cuePlaying' | 'answering' | 'revealing',
+  phase: 'idle' | 'cuePlaying' | 'answering' | 'revealing',
   maskOverrides: Partial<typeof promptMask> = {}
 ) {
   return renderToStaticMarkup(
     <CuePane
       videoUrl="blob:test-video"
-      clip={{ start: 2, end: 4 }}
+      clip={phase === 'idle' ? null : { start: 2, end: 4 }}
       phase={phase}
       replayEnabled
       playbackRate={1}
@@ -49,6 +49,11 @@ function renderCue(
 }
 
 describe('CuePane prompt masking', () => {
+  it('does not ask to select a file again when loaded-video timing is invalid', () => {
+    expect(renderCue('idle')).toContain('Adjust timing to start');
+    expect(renderCue('idle')).not.toContain('Choose a video to begin');
+  });
+
   it('renders combined masks at 50% and 100% during prompt playback', () => {
     const half = renderCue('cuePlaying');
     expect(half).toContain('prompt-mask-blur');

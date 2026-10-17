@@ -28,6 +28,7 @@ function renderAllPlay(disabled: boolean) {
       onRetryMiss={() => undefined}
       onToggleCollapsed={() => undefined}
       onSelect={() => undefined}
+      onSequenceClipEnded={() => undefined}
     />
   );
 }
@@ -43,6 +44,7 @@ describe('Gallery all-play preparation', () => {
   it('keeps every choice masked until the coordinated start', () => {
     const markup = renderAllPlay(true);
     expect(markup.match(/tile-blackout/g)).toHaveLength(3);
+    expect(markup).not.toContain('<video');
   });
 
   it('mounts only the active decoder during one-by-one playback', () => {
@@ -64,10 +66,12 @@ describe('Gallery all-play preparation', () => {
         onRetryMiss={() => undefined}
         onToggleCollapsed={() => undefined}
         onSelect={() => undefined}
+        onSequenceClipEnded={() => undefined}
       />
     );
 
     expect(markup.match(/<video/g)).toHaveLength(1);
+    expect(markup).toContain('preload="auto"');
     expect(markup).toContain('data-playback-rate="14.00"');
   });
 });

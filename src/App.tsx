@@ -68,9 +68,13 @@ function App() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [noteText, setNoteText] = useState('');
+  const [annotationSession, setAnnotationSession] = useState<{ fingerprint: string; items: Annotation[] }>({ fingerprint: '', items: [] });
+  const [noteDraft, setNoteDraft] = useState<{ fingerprint: string; cueStart: number; text: string } | null>(null);
+  const annotations = annotationSession.items;
+  const annotationSessionRef = useRef(annotationSession);
+  annotationSessionRef.current = annotationSession;
   const [stats, setStats] = useState<Record<string, AnchorStats>>({});
+  const [statsFingerprint, setStatsFingerprint] = useState('');
   const [wrongIds, setWrongIds] = useState<Set<string>>(new Set());
   const [missHistory, setMissHistory] = useState<MissAttempt[]>([]);
   const [activeMissId, setActiveMissId] = useState<string | null>(null);
@@ -87,6 +91,9 @@ function App() {
   const [gallerySequenceIndex, setGallerySequenceIndex] = useState<number | null>(null);
   const reactionStartRef = useRef<number>(0);
   const timeoutRef = useRef<number | null>(null);
+  const sequenceTimerRef = useRef<number | null>(null);
+  const completedSequenceIdRef = useRef<string | null>(null);
+  const acceptedAnswerTrialIdRef = useRef<string | null>(null);
   const statsRef = useRef<Record<string, AnchorStats>>({});
   const committedOutcomeTrialIdRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -136,6 +143,26 @@ function App() {
     return trial.answer;
   }, [settings.mode, trial]);
   const currentClip = phase === 'revealing' ? revealClip : trial?.cue ?? null;
+  const noteText = trial
+    ? noteDraft?.fingerprint === video.fingerprint && noteDraft.cueStart === trial.cueStart
+      ? noteDraft.text
+      : nearestAnnotation(annotations, trial.cueStart)?.text ?? ''
+    : '';
+
+  const updateNote = (text: string) => {
+    if (!trial || !video.fingerprint) {
+      return;
+    }
+    setNoteDraft({ fingerprint: video.fingerprint, cueStart: trial.cueStart, text });
+    const previous = annotationSessionRef.current;
+    const next = {
+      fingerprint: video.fingerprint,
+      items: upsertAnnotation(previous.fingerprint === video.fingerprint ? previous.items : [], video.fingerprint, trial.cueStart, text)
+    };
+    annotationSessionRef.current = next;
+    setAnnotationSession(next);
+    saveAnnotations(next.fingerprint, next.items);
+  };
   const canRevealAnswer = Boolean(
     video.url &&
       trial &&
@@ -169,51 +196,26 @@ function App() {
   }, [settings.mode, video.url]);
 
   useEffect(() => {
-    if (!video.fingerprint) {
-      setAnnotations([]);
-      setStats({});
-      setHighScore(0);
-      return;
-    }
-    setAnnotations(loadAnnotations(video.fingerprint));
-    setStats(loadStats(video.fingerprint));
-    setHighScore(loadHighScore(video.fingerprint, settings.mode));
+    setAnnotationSession({ fingerprint: video.fingerprint, items: video.fingerprint ? loadAnnotations(video.fingerprint) : [] });
+    setNoteDraft(null);
+    const loadedStats = video.fingerprint ? loadStats(video.fingerprint) : {};
+    statsRef.current = loadedStats;
+    setStats(loadedStats);
+    setStatsFingerprint(video.fingerprint);
+  }, [video.fingerprint]);
+
+  useEffect(() => {
+    setHighScore(video.fingerprint ? loadHighScore(video.fingerprint, settings.mode) : 0);
     setScore(0);
   }, [settings.mode, video.fingerprint]);
 
   useEffect(() => {
-    if (!video.fingerprint) {
-      return;
-    }
-    saveAnnotations(video.fingerprint, annotations);
-  }, [annotations, video.fingerprint]);
-
-  useEffect(() => {
-    if (!video.fingerprint) {
+    if (!video.fingerprint || statsFingerprint !== video.fingerprint) {
       return;
     }
     saveStats(video.fingerprint, stats);
     statsRef.current = stats;
-  }, [stats, video.fingerprint]);
-
-  useEffect(() => {
-    if (!trial) {
-      setNoteText('');
-      return;
-    }
-    const existing = nearestAnnotation(annotations, trial.cueStart);
-    setNoteText(existing?.text ?? '');
-  }, [annotations, trial]);
-
-  useEffect(() => {
-    if (!trial || !video.fingerprint) {
-      return undefined;
-    }
-    const handle = window.setTimeout(() => {
-      setAnnotations((previous) => upsertAnnotation(previous, video.fingerprint, trial.cueStart, noteText));
-    }, 350);
-    return () => window.clearTimeout(handle);
-  }, [noteText, trial, video.fingerprint]);
+  }, [stats, statsFingerprint, video.fingerprint]);
 
   useEffect(
     () => () => {
@@ -244,7 +246,15 @@ function App() {
         previousCueStart,
         forcedCueStart
       });
+      if (effectiveTrialSettings.mode !== 'mentalLap' && nextTrial.gallery.length < 2) {
+        setTrial(null);
+        setPhase('idle');
+        setChoicesReady(false);
+        setStatus({ message: 'No distinct choices fit this prompt and answer. Shorten Prompt length or Answer gap, lower Speed, or widen Course range.', tone: 'warn' });
+        return;
+      }
       setTrial(nextTrial);
+      acceptedAnswerTrialIdRef.current = null;
       committedOutcomeTrialIdRef.current = null;
       setWrongIds(new Set());
       setActiveMissId(null);
@@ -291,7 +301,7 @@ function App() {
       if (!isCourseRangeLongEnough(courseStart, courseEnd, sourceClipDuration, requiredForwardGap)) {
         setTrial(null);
         setPhase('idle');
-        setStatus({ message: 'The selected course range is too short for the prompt, answer, and minimum answer gap.', tone: 'warn' });
+        setStatus({ message: `This range needs ${(2 * sourceClipDuration + requiredForwardGap).toFixed(1)}s at the current settings; it has ${(courseEnd - courseStart).toFixed(1)}s. Shorten Prompt length, lower Speed, reduce minimum Answer gap, or widen Course range.`, tone: 'warn' });
         return;
       }
       const forcedCueStart = settings.mode === 'sequential' ? (lastCueStart ?? effectiveTrialSettings.t0) : null;
@@ -338,6 +348,8 @@ function App() {
     });
     setTrial(null);
     committedOutcomeTrialIdRef.current = null;
+    acceptedAnswerTrialIdRef.current = null;
+    setNoteDraft(null);
     setPhase('idle');
     setScore(0);
     setLastCueStart(null);
@@ -436,7 +448,7 @@ function App() {
       startNextPrompt();
       return;
     }
-    if (!trial || !settings.replayEnabled || phase === 'idle' || phase === 'cueDelay' || phase === 'cuePlaying') {
+    if (!trial || !settings.replayEnabled || phase !== 'answering' || acceptedAnswerTrialIdRef.current === trial.id) {
       return;
     }
     if (timeoutRef.current !== null) {
@@ -487,7 +499,7 @@ function App() {
 
   const handleSelect = useCallback(
     (id: string) => {
-      if (!trial || phase !== 'answering' || !choicesReady || settings.mode === 'mentalLap') {
+      if (!trial || phase !== 'answering' || !choicesReady || settings.mode === 'mentalLap' || acceptedAnswerTrialIdRef.current === trial.id) {
         return;
       }
       const item = trial.gallery.find((entry) => entry.id === id);
@@ -502,6 +514,9 @@ function App() {
         setStats((previous) => updateAnchorStats(previous, trial.cueStart, item.isCorrect, reactionMs));
       }
       if (item.isCorrect) {
+        acceptedAnswerTrialIdRef.current = trial.id;
+        setChoicesReady(false);
+        setGallerySequenceIndex(null);
         if (!activeMissId) {
           updateScore(1);
         }
@@ -576,64 +591,44 @@ function App() {
   }, [handleSelect, handleReplay, restartCourseStart, revealAnswer, trial]);
 
   useEffect(() => {
+    setGallerySequenceIndex(null);
+    setChoicesReady(false);
+    completedSequenceIdRef.current = null;
     if (phase !== 'answering' || !trial || trial.gallery.length === 0) {
-      setGallerySequenceIndex(null);
-      setChoicesReady(false);
       return undefined;
     }
 
-    let active = true;
-    const wait = (ms: number) =>
-      new Promise<void>((resolve) => {
-        window.setTimeout(resolve, ms);
-      });
-
-    const runSequence = async () => {
-      setChoicesReady(false);
-      if (settings.mode === 'mentalLap') {
-        reactionStartRef.current = performance.now();
-        setChoicesReady(true);
-        return;
-      }
-      await wait(settings.galleryDelay * 1000);
-      if (!active) {
-        return;
-      }
+    sequenceTimerRef.current = window.setTimeout(() => {
       reactionStartRef.current = performance.now();
       setChoicesReady(true);
-
-      if (settings.galleryPlayback !== 'sequence') {
-        return;
+      if (settings.mode !== 'mentalLap' && settings.galleryPlayback === 'sequence') {
+        setGallerySequenceIndex(0);
       }
-
-      const firstClip = trial.gallery[0]?.clip;
-      const clipWallMs = firstClip
-        ? ((firstClip.end - firstClip.start) / Math.max(0.25, settings.playbackRate)) * 1000
-        : settings.T * 1000;
-      for (let index = 0; index < trial.gallery.length; index += 1) {
-        if (!active) {
-          return;
-        }
-        setGallerySequenceIndex(index);
-        await wait(clipWallMs);
-        if (!active) {
-          return;
-        }
-        setGallerySequenceIndex(null);
-        await wait(settings.galleryDelay * 1000);
-      }
-
-      if (active) {
-        setGallerySequenceIndex(null);
-      }
-    };
-
-    void runSequence();
+    }, settings.mode === 'mentalLap' ? 0 : settings.galleryDelay * 1000);
 
     return () => {
-      active = false;
+      if (sequenceTimerRef.current !== null) {
+        window.clearTimeout(sequenceTimerRef.current);
+        sequenceTimerRef.current = null;
+      }
     };
-  }, [phase, settings.T, settings.galleryDelay, settings.galleryPlayback, settings.mode, settings.playbackRate, trial]);
+  }, [phase, settings.galleryDelay, settings.galleryPlayback, settings.mode, trial]);
+
+  const handleSequenceClipEnded = useCallback((id: string) => {
+    if (
+      phase !== 'answering' || !choicesReady || settings.galleryPlayback !== 'sequence' ||
+      gallerySequenceIndex === null || trial?.gallery[gallerySequenceIndex]?.id !== id ||
+      completedSequenceIdRef.current === id || acceptedAnswerTrialIdRef.current === trial.id
+    ) {
+      return;
+    }
+    completedSequenceIdRef.current = id;
+    setGallerySequenceIndex(null);
+    const nextIndex = gallerySequenceIndex + 1;
+    if (nextIndex < trial.gallery.length) {
+      sequenceTimerRef.current = window.setTimeout(() => setGallerySequenceIndex(nextIndex), settings.galleryDelay * 1000);
+    }
+  }, [choicesReady, gallerySequenceIndex, phase, settings.galleryDelay, settings.galleryPlayback, trial]);
 
   const resetScore = () => {
     setScore(0);
@@ -650,6 +645,7 @@ function App() {
     }
     setTrial(miss.trial);
     committedOutcomeTrialIdRef.current = miss.trial.id;
+    acceptedAnswerTrialIdRef.current = null;
     setWrongIds(new Set());
     setActiveMissId(miss.id);
     setChoicesReady(false);
@@ -751,7 +747,7 @@ function App() {
           playbackRate={settings.playbackRate}
           promptMask={settings}
           canReveal={canRevealAnswer}
-          canReplayPrompt={settings.replayEnabled && phase === 'answering'}
+          canReplayPrompt={settings.replayEnabled && phase === 'answering' && acceptedAnswerTrialIdRef.current !== trial?.id}
           canReplayFullAnswer={canReplayFullAnswer}
           canRestartCourse={canRestartCourse}
           canStartNext={phase === 'nextReady'}
@@ -768,7 +764,7 @@ function App() {
           disabled={!trial || !video.fingerprint}
           cueStart={cueStart}
           collapsed={notesCollapsed}
-          onChange={setNoteText}
+          onChange={updateNote}
           onToggleCollapsed={() => setNotesCollapsed((previous) => !previous)}
         />
       </section>
@@ -807,6 +803,7 @@ function App() {
           onRetryMiss={retryMiss}
           onToggleCollapsed={() => setGalleryCollapsed((previous) => !previous)}
           onSelect={handleSelect}
+          onSequenceClipEnded={handleSequenceClipEnded}
         />
         <ControlPanel
           settings={settings}
