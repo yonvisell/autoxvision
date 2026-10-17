@@ -589,3 +589,32 @@ List only real limitations that remain at handoff.
 - How to build: `npm run build`.
 - Tests: `npm run lint`, `npm test`, and `npm run build` passed.
 - Notes for Yon: Shortcut help is visible in the bottom overlay line. Local videos stay out of git via `.gitignore`.
+
+## 2026-10-17 focused UI, workflow, and phone revision
+
+Review basis: read the project specification, acceptance checklist, README, previous planning/handoff documents, existing revision brief, and worklog. The recent implementation decisions remain authoritative where they supersede the MVP. The user requested review, local repair, a revision harness, staged implementation, and bounded mobile investigation.
+
+The new `REVISION_HARNESS.md` narrows the work to playback reliability, trial/saved-state correctness, and phone usability. Broader training features, automatic conversion, new modes, and a playback-framework rewrite were pruned. Two subagents audited and implemented separate playback and App-state slices; integration and browser inspection remained centralized.
+
+Confirmed defects and repairs:
+
+- One-by-one choices previously spent their allotted viewing interval loading/seeking. Sequence advancement now follows completion after successful playback startup, retaining the configured gap. Active choices preload their frames; only one choice player mounts. Pointer/focus entry no longer restarts a sequence choice.
+- Failed prompt/reveal playback previously requested a click without a working recovery action. Prompt/reveal and one-by-one/hover playback now offer a real retry. A retry tap on a failed choice does not submit it. Obsolete players and timers are stopped; all gallery players unmount while choices are disabled, reducing competition with prompt/reveal decoding.
+- A correct answer could score repeatedly during its 280ms feedback delay. An immediate acceptance lock prevents repeated scoring and replay races.
+- The notes debounce could lose a recent edit on navigation, and separate load/save effects could write prior video state under a new fingerprint. Notes now save immediately to their bound video/time; statistics writes check their video ownership.
+- Short-range settings could produce a quiz containing only the correct answer. Such a trial is now withheld with a concise remedy. Invalid timing states show required versus available source duration and an accurate prompt message. Settings remain user-controlled.
+- Mobile collapsed controls could retain the desktop side column, and fixed sizing wasted space. Phone layouts now stack predictably, preserve roughly 3px outer gutters plus device safe areas, use larger touch targets, and size gallery tiles to the video aspect ratio. Desktop control density is retained. The phone keyboard-helper footer is omitted; instructions remain available through `?`.
+- README/help explain a simple phone path (One-by-one, initially 1x–2x) and a short-run starting point (existing Learning preset, 1–3s Answer gap). Corrected the README's obsolete claim that notes import/export controls are visible; their utilities remain tested.
+
+Verification:
+
+- Baseline `npm install --no-audit --no-fund`, `npm run lint`, `npm test`, and `npm run build` passed (56 tests). No dependency changes.
+- Final lint, test, build, and whitespace checks passed: 69 tests in 12 files. New coverage exercises delayed media startup, cancelled playback, rejected-play retry, focus stability, repeated correct input, sequence completion, immediate note transitions, cross-video statistics writes, exact 60-second timing recovery, and one-choice rejection. Existing annotation JSON export/import tests remain green; controls intentionally remain absent.
+- `npm run dev` runs at `http://127.0.0.1:5173/` (Node 20.20.2). Native macOS Chrome loaded `AAXLPM1.MOV` and exercised sequential prompt playback, two wrong retries, double-click correct (+1 once), answer reveal, and manual next prompt. Native file-dialog input initially needed explicit selection of its recent file entry; subsequent file loading worked.
+- Connected-browser checks used the same 453.915s, 2816×1584 course footage and an existing 83.925s, 1920×1080 run video. Verified all four modes, wrong/correct feedback, one-by-one playback, All play, replay, note retention on immediate navigation (test note restored), and recovery from invalid duration settings.
+- During active one-by-one playback, exactly one video was mounted. During prompt replay from All play, gallery video count fell from three to zero and only the prompt player remained. Three All play players were observed playing at the requested rate. Clean-reload reveal playback advanced normally; no new browser warnings/errors were recorded. An earlier development-only React warning occurred while hot reload changed an effect dependency list; it did not recur after reload.
+- Responsive checks used actual CSS viewports 430×932 and 932×430, with no horizontal overflow. At 1280×720, the desktop controls fit their 325px panel without vertical scrolling. Screenshots were saved under `/tmp/autoxvision-review-2026-10-17/`.
+
+Boundaries: no physical iPhone test or controlled frame-rate benchmark was performed. These changes remove avoidable startup truncation and concurrent decoding work; they do not guarantee smooth multi-stream high-resolution playback at extreme speed. Direct codec support and high-rate frame skipping retain their existing platform limits. No runtime libraries, required preprocessing, publication, or deployment were added.
+
+Local commits: `c6ec131` records the narrowed harness; `fad3579` repairs playback and state behavior; the following UI/documentation commit completes the revision. Pre-existing untracked `AutoXVision-revision.md` and `SatProFinale/` were preserved and excluded from commits, as were local videos.

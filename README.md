@@ -56,7 +56,13 @@ The video remains local in the browser. It is not uploaded.
 
 ## Notes and persistence
 
-Notes are bound to the current cue start time within a `±0.25 s` tolerance. They autosave locally using a video fingerprint based on file name, size, and last-modified timestamp. Export/import JSON is provided for disk persistence and transfer.
+Notes are bound to the current cue start time within a `±0.25 s` tolerance. Edits save immediately using a video fingerprint based on file name, size, and last-modified timestamp. Changing prompt, mode, or file retains the last edit. JSON export/import utilities remain tested in the code; their controls are not exposed in the current interface.
+
+## Phone and short-run use
+
+Start with **One-by-one** and **1x–2x** playback on a phone; increase speed when the footage remains readable. Choices receive their full viewing interval after loading, and gallery players are released during prompts and reveals. If the browser blocks playback, tap **Retry playback**, or tap the choice marked for retry. Hover mode requires a pointer or keyboard focus; tapping a normal choice submits it.
+
+For a one-minute run, try the existing **Learning** preset and reduce **Answer gap** to about `1–3s` for nearby continuation practice. The default `10s` prompt at `4x` needs at least `81s` of source video for prompt, answer, and minimum gap. Timing warnings explain the required duration; a quiz is not offered when no distinct wrong choice fits. Phone controls stack below the gallery and collapse to a full-width row. The video stays local and needs no conversion.
 
 ## Build
 
